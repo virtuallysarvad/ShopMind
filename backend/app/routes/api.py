@@ -13,6 +13,9 @@ from app.schemas import (
 from app.services.proposal_service import review_proposal, execute_proposal
 from app.services.timeline_service import get_customer_timeline
 from app.agents.segment_agent import apply_segment_change
+from app.services.woo_sync import write_back, sync_orders
+from app.woo_client import get_woo_client, WooCommerceError
+from app.config import settings
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -161,7 +164,14 @@ def _execute_approved_proposal(db: Session, proposal: Proposal) -> None:
         if customer:
             apply_segment_change(db, customer, action["to"])
 
-    # For send_email and investigate_issue: mark as executed (simulated)
+    # Mirror into WooCommerce (live mode only; never blocks the approval)
+    client = get_woo_client()
+    try:
+        write_back(db, proposal, client)
+    finally:
+        if client:
+            client.close()
+
     execute_proposal(db, proposal.id)
 
 
@@ -193,3 +203,36 @@ def copilot_chat(body: CopilotChatRequest, db: Session = Depends(get_db)):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return out.to_dict()
+
+
+# ── WooCommerce connection ────────────────────────────────────────────────
+
+@router.get("/woocommerce/status")
+def woocommerce_status():
+    """Which store ShopMind talks to, and whether the credentials work."""
+    if settings.woo_mode != "live":
+        return {"mode": "mock", "connected": False, "store_url": None,
+                "detail": "Demo data. Set SHOPMIND_WOO_MODE=live to use a real store."}
+    client = get_woo_client()
+    try:
+        info = client.ping()
+        return {"mode": "live", "connected": True, "store_url": info["store_url"],
+                "total_orders": info["total_orders"], "writeback": settings.woo_writeback}
+    except WooCommerceError as e:
+        return {"mode": "live", "connected": False, "store_url": settings.woo_store_url, "detail": str(e)}
+    finally:
+        client.close()
+
+
+@router.post("/woocommerce/sync")
+def woocommerce_sync(modified_after: str | None = None, db: Session = Depends(get_db)):
+    """Pull orders from the live store through the agent pipeline (idempotent)."""
+    client = get_woo_client()
+    if client is None:
+        raise HTTPException(status_code=400, detail="WooCommerce is in mock mode. Set SHOPMIND_WOO_MODE=live.")
+    try:
+        return sync_orders(db, client, modified_after=modified_after)
+    except WooCommerceError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    finally:
+        client.close()

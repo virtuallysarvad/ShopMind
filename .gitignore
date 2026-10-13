@@ -27,3 +27,4 @@ dist-ssr/
 .idea/
 .DS_Store
 *.log
+woocommerce/scripts/shopmind-woo.env

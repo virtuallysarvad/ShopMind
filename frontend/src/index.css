@@ -629,3 +629,17 @@ button { font-family: inherit; }
 }
 .cp-panel-head { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
 .cp-panel-head svg:first-child { color: var(--accent-primary); }
+
+/* ── WooCommerce connection card ───────────────────────────────────────── */
+.woo-card { margin-bottom: 20px; padding: 16px 20px; }
+.woo-head { display: flex; align-items: center; gap: 14px; }
+.woo-icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: #f1ebfa; color: #7f54b3; flex-shrink: 0; }
+.woo-text { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.woo-sub { font-size: 13px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.woo-sub.ok { color: var(--success); }
+.woo-sub.bad { color: var(--danger); }
+.woo-result { margin-top: 12px; font-size: 13px; padding: 8px 12px; border-radius: var(--radius-sm); }
+.woo-result.ok { background: var(--success-bg); color: var(--success); }
+.woo-result.bad { background: var(--danger-bg); color: var(--danger); }
+.spin { animation: woo-spin 1s linear infinite; }
+@keyframes woo-spin { to { transform: rotate(360deg); } }

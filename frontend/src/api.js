@@ -64,6 +64,10 @@ export const api = {
   copilotChat: (messages) =>
     request('/api/copilot/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
 
+  // WooCommerce connection
+  wooStatus: () => request('/api/woocommerce/status'),
+  wooSync: () => request('/api/woocommerce/sync', { method: 'POST' }),
+
   // Health
   health: () => request('/health'),
 };
