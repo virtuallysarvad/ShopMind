@@ -286,3 +286,25 @@ Sarvad asked Hark to review the repo after Phase 4 and then apply the fixes it f
 
 ### Still not done
 - **No genuine live LM Studio run yet.** That needs LM Studio running on the developer's machine; log the `/health` output and one real proposal here once done.
+
+---
+
+# Phase 6 — Pipeline-board UI redesign (Hark, 2026-10-13)
+
+### Human prompt (intent)
+Sarvad shared a reference screenshot of a light, orange-accent "deals pipeline" CRM board and asked for ShopMind's UI to match it, rewiring as needed.
+
+### How the reference was mapped onto ShopMind
+- **Deals board → Approval Inbox board.** Columns are the three agent outputs (Segment change, Follow-up email, Order issue). Cards show agent, LLM-vs-rules chip, customer, customer lifetime spend, date, and a "waiting" flag.
+- **Won / Lost / Archive drop bar → Approve / Reject dock.** Dragging a pending proposal slides up the dock; dropping calls the existing `POST /api/proposals/{id}/review`. Human-in-the-loop stays the only way anything executes. Clicking a card opens a drawer with evidence, proposed action, LLM explanation and the rendered email draft, plus Approve/Reject buttons.
+- **KPI strip + "Volume by stage" bar** on every board page (proposals, customers by segment, orders by status).
+- **Customers board** by segment (read-only, since segments are rule-decided) and **Orders board** by WooCommerce status, each with Board/List toggle and filter pills.
+- **Top bar** with nav, global search (`/` to focus); the "Ask Neo" corner became an LLM status pill (LM Studio model / Ollama / FakeLLM, from `/health`).
+
+### Backend changes
+None. The frontend now requests `limit=200` (the API's max) and joins customers to proposals/orders client-side.
+
+### Verification actually performed
+- `npm run build` → succeeds.
+- Backend seeded and served; `/api/proposals`, `/api/customers`, `/api/orders` return the fields the boards use (agent names `segment_agent`, `follow_up_agent`, `order_issue_watcher`).
+- Not done: a headless-browser screenshot (no Chromium in the sandbox). Check the boards visually in a real browser.
