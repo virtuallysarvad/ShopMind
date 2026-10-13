@@ -139,6 +139,19 @@ class ProposalOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ManualProposalCreate(BaseModel):
+    """Request body for adding a proposal by hand (Approval Inbox → New)."""
+    proposal_type: ProposalType
+    customer_id: Optional[int] = None
+    woo_order_id: Optional[int] = None
+    new_segment: Optional[str] = None
+    subject: Optional[str] = Field(None, max_length=200)
+    body: Optional[str] = Field(None, max_length=5000)
+    issue_type: Optional[str] = None
+    note: Optional[str] = Field(None, max_length=2000)
+    created_by: str = "admin"
+
+
 class ProposalReview(BaseModel):
     """Request body for approving/rejecting a proposal."""
     action: str = Field(..., pattern="^(approve|reject)$")

@@ -8,9 +8,10 @@ from app.database import get_db
 from app.models import Customer, Order, TimelineEvent, Proposal, ProposalStatus, CustomerSegment
 from app.schemas import (
     CustomerOut, CustomerSummary, OrderOut, TimelineEventOut,
-    ProposalOut, ProposalReview, DashboardStats,
+    ProposalOut, ProposalReview, ManualProposalCreate, DashboardStats,
 )
 from app.services.proposal_service import review_proposal, execute_proposal
+from app.services.manual_proposal import ManualProposalError, create_manual_proposal
 from app.services.timeline_service import get_customer_timeline
 from app.agents.segment_agent import apply_segment_change
 from app.services.woo_sync import write_back, sync_orders
@@ -124,6 +125,18 @@ def list_proposals(
     if status:
         q = q.filter(Proposal.status == status)
     return q.order_by(Proposal.created_at.desc()).limit(limit).all()
+
+
+@router.post("/proposals", response_model=ProposalOut, status_code=201)
+def create_proposal_endpoint(body: ManualProposalCreate, db: Session = Depends(get_db)):
+    """Add a proposal by hand. It lands as pending and still needs approval."""
+    try:
+        proposal = create_manual_proposal(db, body)
+    except ManualProposalError as e:
+        raise HTTPException(status_code=e.status, detail=str(e))
+    db.commit()
+    db.refresh(proposal)
+    return proposal
 
 
 @router.get("/proposals/{proposal_id}", response_model=ProposalOut)

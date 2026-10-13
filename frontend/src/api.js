@@ -47,6 +47,8 @@ export const api = {
     return request(`/api/proposals?${params}`);
   },
   getProposal: (id) => request(`/api/proposals/${id}`),
+  createProposal: (payload) =>
+    request('/api/proposals', { method: 'POST', body: JSON.stringify(payload) }),
   reviewProposal: (id, action, reviewedBy = 'admin') =>
     request(`/api/proposals/${id}/review`, {
       method: 'POST',
