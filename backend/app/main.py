@@ -1,5 +1,7 @@
 """ShopMind FastAPI application entry point."""
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,7 +16,22 @@ from app.routes.webhooks import router as webhook_router
 from app.routes.api import router as api_router
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize database tables on startup (replaces deprecated on_event)."""
+    init_db()
+    if settings.debug:
+        logger.warning(
+            "SHOPMIND_DEBUG is on: unsigned webhooks are accepted. "
+            "Never run like this in production."
+        )
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.app_name,
     description="AI-powered CRM layer for WooCommerce",
     version="0.1.0",
@@ -34,15 +51,9 @@ app.include_router(webhook_router)
 app.include_router(api_router)
 
 
-@app.on_event("startup")
-def on_startup():
-    """Initialize database tables on startup."""
-    init_db()
-
-
 @app.get("/health")
 def health_check():
-    """Liveness plus which LLM provider is active (and if Ollama answers)."""
+    """Liveness plus which LLM provider is active and whether its server answers."""
     health = {
         "status": "healthy",
         "app": settings.app_name,
