@@ -124,7 +124,7 @@ export default function Orders() {
                         {c && <><span className="dot">·</span>{c.email}</>}
                       </div>
                       <div className="deal-foot">
-                        <span className="deal-amount">{formatCurrency(o.total, o.currency)}</span>
+                        <span className="deal-amount">{formatCurrency(o.total)}</span>
                         {stale >= 3 ? <InactiveFlag days={stale} label="no update" /> : <CardDate date={o.created_at} />}
                         <Avatar text={c ? getInitials(c.first_name, c.last_name) : '?'} title={c?.email} />
                       </div>
@@ -150,7 +150,7 @@ export default function Orders() {
                     <td>{c ? `${c.first_name} ${c.last_name}` : `Customer #${o.customer_id}`}</td>
                     <td style={{ color: 'var(--text-secondary)' }}>{itemsLabel(o)}</td>
                     <td><span className={`status-badge ${o.status}`}>{o.status}</span></td>
-                    <td>{formatCurrency(o.total, o.currency)}</td>
+                    <td>{formatCurrency(o.total)}</td>
                     <td style={{ color: 'var(--text-muted)' }}>{formatDate(o.created_at)}</td>
                   </tr>
                 );

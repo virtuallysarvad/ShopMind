@@ -98,7 +98,7 @@ class Order(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     status = Column(SAEnum(OrderStatus), default=OrderStatus.PENDING)
     total = Column(Float, default=0.0)
-    currency = Column(String(3), default="USD")
+    currency = Column(String(3), default="INR")
     payment_method = Column(String(100), default="")
     line_items = Column(JSON, default=list)
     billing = Column(JSON, default=dict)

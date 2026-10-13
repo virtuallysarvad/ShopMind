@@ -33,7 +33,7 @@ class TestSegmentClassification:
         assert classify_customer(c) == CustomerSegment.REGULAR
 
     def test_vip_customer(self, db):
-        c = Customer(email="vip@test.com", order_count=5, total_spent=500)
+        c = Customer(email="vip@test.com", order_count=5, total_spent=15000)
         assert classify_customer(c) == CustomerSegment.VIP
 
     def test_vip_high_orders_low_spend(self, db):
@@ -53,7 +53,7 @@ class TestSegmentClassification:
 class TestSegmentAgent:
     def test_creates_proposal_on_change(self, db, sample_customer):
         sample_customer.order_count = 5
-        sample_customer.total_spent = 600
+        sample_customer.total_spent = 18000
         db.commit()
         created = run_segment_agent(db, sample_customer)
         assert created is True
@@ -71,7 +71,7 @@ class TestSegmentAgent:
     def test_dedup_prevents_duplicate(self, db, sample_customer):
         """Running segment agent twice should only create one proposal."""
         sample_customer.order_count = 5
-        sample_customer.total_spent = 600
+        sample_customer.total_spent = 18000
         db.commit()
         first = run_segment_agent(db, sample_customer)
         db.commit()

@@ -156,7 +156,7 @@ function OrdersView({ orders }) {
           <tr key={o.id}>
             <td style={{ fontWeight: 600 }}>#{o.woo_order_id}</td>
             <td><span className={`status-badge ${o.status}`}>{o.status}</span></td>
-            <td>{formatCurrency(o.total, o.currency)}</td>
+            <td>{formatCurrency(o.total)}</td>
             <td style={{ color: 'var(--text-secondary)' }}>{o.payment_method || '—'}</td>
             <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{formatDate(o.created_at)}</td>
           </tr>

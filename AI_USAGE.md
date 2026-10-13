@@ -78,7 +78,7 @@ Read the backend (`app/`), tests, `README.md`, and the frontend (`src/`) to find
 - The mandatory journey: signed order webhook → customer resolution + order persisted → **proposal persisted** → `GET /api/proposals` shows it → `POST /api/proposals/{id}/review {action: approve}` → status **executed** → timeline contains `order_created`, `proposal_created`, `proposal_approved`, `proposal_executed`.
 - Reject path (proposal stays unexecuted) and double-review rejection (400).
 - Idempotent webhook redelivery (order upserted, not duplicated; follow-up de-duplicated).
-- Segment upgrade: 5×$150 orders → VIP proposal → approve → `customer.segment == vip`.
+- Segment upgrade: 5×₹3,500 orders → VIP proposal → approve → `customer.segment == vip`.
 - Issue detection: failed-payment order → `issue_alert` proposal + `issue_detected` timeline event.
 
 ### Verification actually performed (not aspirational)

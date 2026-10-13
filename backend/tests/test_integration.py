@@ -52,7 +52,7 @@ def _order(
         "id": order_id,
         "status": status,
         "total": total,
-        "currency": "USD",
+        "currency": "INR",
         "payment_method": "stripe",
         "billing": {
             "first_name": first,
@@ -226,11 +226,11 @@ class TestSegmentUpgrade:
     def test_becomes_vip_and_approval_applies_change(self, client, db):
         email = "vip@example.com"
         for i in range(5):
-            _post_order(client, _order(7000 + i, email, status="completed", total="150.00"))
+            _post_order(client, _order(7000 + i, email, status="completed", total="3500.00"))
 
         customer = db.query(Customer).filter(Customer.email == email).first()
         assert customer.order_count == 5
-        assert customer.total_spent == 750.00
+        assert customer.total_spent == 17500.00
 
         # A VIP segment-change proposal exists and is pending
         pending = client.get("/api/proposals", params={"status": "pending"}).json()

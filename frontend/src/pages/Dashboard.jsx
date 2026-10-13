@@ -85,7 +85,7 @@ export default function Dashboard() {
                         {order.status}
                       </span>
                     </td>
-                    <td>{formatCurrency(order.total, order.currency)}</td>
+                    <td>{formatCurrency(order.total)}</td>
                   </tr>
                 ))}
               </tbody>

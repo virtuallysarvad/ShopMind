@@ -43,7 +43,7 @@ class WooOrderPayload(BaseModel):
     id: int
     status: str = "pending"
     total: str = "0.00"
-    currency: str = "USD"
+    currency: str = "INR"
     payment_method: str = ""
     billing: WooBilling = WooBilling()
     shipping: WooShipping = WooShipping()
