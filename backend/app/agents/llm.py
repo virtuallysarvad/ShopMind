@@ -18,6 +18,8 @@ Clients
 -------
 * :class:`FakeLLM`  — deterministic templates, no network (default).
 * :class:`OllamaLLM` — local model served by Ollama, no API keys.
+* :class:`LMStudioLLM` — local model served by LM Studio's OpenAI-compatible
+  API (``/v1/chat/completions``), no API keys.
 * :class:`FallbackLLM` — tries a real model, degrades to ``FakeLLM`` on any
   network/timeout/invalid-output error.
 * :func:`get_llm` — factory returning the client selected by ``llm_provider``.
@@ -228,13 +230,12 @@ class OllamaLLM:
         """POST /api/chat and return the assistant message content."""
         payload: dict = {
             "model": self.model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": json.dumps(context, ensure_ascii=False, default=str),
-                },
-            ],
+            "messages": _chat_messages(
+                system_prompt,
+                context.get("customer") or {},
+                context.get("task", ""),
+                {k: v for k, v in context.items() if k not in {"task", "customer"}},
+            ),
             "stream": False,
             "options": {"temperature": 0.3},
         }
@@ -327,7 +328,9 @@ class LMStudioLLM:
         self.model = model or settings.lmstudio_model
         self.timeout = timeout or settings.llm_timeout_seconds
 
-    def _chat(self, system_prompt: str, context: dict, json_mode: bool = False) -> str:
+    def _chat(
+        self, system_prompt: str, context: dict, json_mode: bool = False
+    ) -> tuple[str, str | None]:
         messages = _chat_messages(
             system_prompt,
             context.get("customer") or {},
@@ -356,25 +359,22 @@ class LMStudioLLM:
         response.raise_for_status()
 
         completion = response.json()
-        self._response_model_field = completion.get("model")
         message = (completion.get("choices") or [{}])[0].get("message", {})
         content = (message or {}).get("content", "")
         if not content or not content.strip():
             raise ValueError("LM Studio returned an empty response")
-        return content.strip()
+        # Return the model the server says produced the text alongside it, so
+        # no per-call state is kept on the (shared) client instance.
+        return content.strip(), completion.get("model")
 
     def _result(self, text: str, response_model: str | None = None) -> LLMResult:
-        # Prefer the model carried by the last chat completion response (the best
-        # observable trace of which model produced the text).  When the response
-        # did not carry its own model field, fall back to the configured default.
-        model = response_model
-        if model is None:
-            model = getattr(self, "_response_model_field", None)
-        model = model or self.model
+        # Prefer the model carried by the chat completion response (the best
+        # observable trace of which model produced the text); fall back to the
+        # configured model id when the response omits it.
         return LLMResult(
             text=text,
             is_llm_generated=True,
-            model=model,
+            model=response_model or self.model,
         )
 
     def explain_segment(self, customer_data: dict, new_segment: str) -> LLMResult:
@@ -383,8 +383,8 @@ class LMStudioLLM:
             "customer": customer_data,
             "new_segment": new_segment,
         }
-        text = self._chat(SEGMENT_SYSTEM_PROMPT, context)
-        return self._result(text)
+        text, model = self._chat(SEGMENT_SYSTEM_PROMPT, context)
+        return self._result(text, model)
 
     def draft_follow_up(
         self, customer_data: dict, trigger: str, context: dict
@@ -395,7 +395,7 @@ class LMStudioLLM:
             "trigger": trigger,
             "context": context,
         }
-        raw = self._chat(DRAFT_SYSTEM_PROMPT, prompt_context, json_mode=True)
+        raw, model = self._chat(DRAFT_SYSTEM_PROMPT, prompt_context, json_mode=True)
 
         try:
             parsed = json.loads(raw)
@@ -416,7 +416,7 @@ class LMStudioLLM:
         draft = json.dumps(
             {"subject": subject, "body": body}, ensure_ascii=False, indent=2
         )
-        return self._result(draft)
+        return self._result(draft, model)
 
     def explain_issue(self, issue_type: str, order_data: dict) -> LLMResult:
         context = {
@@ -424,8 +424,8 @@ class LMStudioLLM:
             "issue_type": issue_type,
             "order": order_data,
         }
-        text = self._chat(ISSUE_SYSTEM_PROMPT, context)
-        return self._result(text)
+        text, model = self._chat(ISSUE_SYSTEM_PROMPT, context)
+        return self._result(text, model)
 
 
 
@@ -436,7 +436,7 @@ class FallbackLLM:
 
     Any HTTP error, timeout, malformed model output or bad JSON is caught,
     logged as a warning and served by the fallback instead — so a stopped
-    Ollama never breaks ingestion or the approval flow, and the proposal is
+    Ollama or LM Studio server never breaks ingestion or the approval flow, and the proposal is
     honestly flagged as not model-generated.
     """
 
@@ -495,10 +495,6 @@ def _chat_messages(
         "customer": customer_data,
         **(context or {}),
     }
-    return [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": json.dumps(ctx, ensure_ascii=False, default=str)},
-    ]
     return [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": json.dumps(ctx, ensure_ascii=False, default=str)},
