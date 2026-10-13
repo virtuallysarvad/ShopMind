@@ -22,7 +22,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import Customer
+from app.models import Customer, Proposal
 from app.agents.copilot_tools import TOOLS, run_tool, inr
 
 logger = logging.getLogger(__name__)
@@ -137,6 +137,18 @@ def _parse_args(raw) -> dict:
         return {}
 
 
+def _mark_llm_written(db: Session, result: dict, model_id: str | None) -> None:
+    """A proposal the model wrote through a tool is LLM text: flag it like the agents do."""
+    if not (isinstance(result, dict) and result.get("created") and result.get("proposal_id")):
+        return
+    p = db.get(Proposal, result["proposal_id"])
+    if p is None:
+        return
+    p.is_llm_generated = True
+    p.evidence = {**(p.evidence or {}), "llm_model": model_id}
+    db.commit()
+
+
 def run_llm_copilot(db: Session, history: list[dict], model: ChatModel) -> CopilotReply:
     messages = [{"role": "system", "content": COPILOT_SYSTEM_PROMPT}, *history]
     tools = [t.schema() for t in TOOLS.values()]
@@ -155,6 +167,7 @@ def run_llm_copilot(db: Session, history: list[dict], model: ChatModel) -> Copil
             fn = call.get("function") or {}
             name, args = fn.get("name", ""), _parse_args(fn.get("arguments"))
             result = run_tool(db, name, args)
+            _mark_llm_written(db, result, model_id)
             steps.append(Step(name, args, result))
             messages.append({
                 "role": "tool",

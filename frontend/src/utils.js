@@ -25,6 +25,29 @@ export function useApi(fetchFn, deps = []) {
     refetch();
   }, [refetch]);
 
+  // Stay wired to the rest of the app: refetch quietly (no spinner) when
+  // something changes data (Copilot, approvals, Woo sync) and every 15 s
+  // while the tab is visible, so WooCommerce webhooks show up on their own.
+  const silentRefetch = useCallback(async () => {
+    try {
+      setData(await fetchFn());
+      setError(null);
+    } catch {
+      /* keep the last good data on a background refresh */
+    }
+  }, deps);
+
+  useEffect(() => {
+    window.addEventListener('shopmind:changed', silentRefetch);
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') silentRefetch();
+    }, 15000);
+    return () => {
+      window.removeEventListener('shopmind:changed', silentRefetch);
+      clearInterval(timer);
+    };
+  }, [silentRefetch]);
+
   return { data, loading, error, refetch };
 }
 

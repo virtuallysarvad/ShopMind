@@ -100,8 +100,12 @@ function Message({ m, onNavigate }) {
       <div className="cp-text">{m.content}</div>
       {m.note && <div className="cp-note">{m.note}</div>}
       {m.proposals?.length > 0 && (
-        <Link to="/proposals" className="btn btn-sm btn-outline cp-inbox" onClick={onNavigate}>
-          <Inbox size={13} /> Review in Approval Inbox
+        <Link
+          to={`/proposals?open=${m.proposals[m.proposals.length - 1]}`}
+          className="btn btn-sm btn-outline cp-inbox"
+          onClick={onNavigate}
+        >
+          <Inbox size={13} /> Review {m.proposals.length === 1 ? `#${m.proposals[0]}` : `${m.proposals.length} proposals`} in Approval Inbox
         </Link>
       )}
       <Steps steps={m.steps} />

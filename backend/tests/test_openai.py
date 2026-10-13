@@ -102,6 +102,7 @@ def test_groq_factory_and_request(groq_settings, monkeypatch):
 
 def test_groq_rate_limit_falls_back(groq_settings, monkeypatch):
     monkeypatch.setattr(llm_module.httpx, "post", _fake_post("", [], status=429))
+    monkeypatch.setattr(llm_module.time, "sleep", lambda s: None)
     assert get_llm().explain_issue("payment_failed", {"id": 1}).is_llm_generated is False
 
 
@@ -110,3 +111,47 @@ def test_groq_copilot_and_health(client, groq_settings, monkeypatch):
     monkeypatch.setattr("app.main.groq_reachable", lambda: True)
     h = client.get("/health").json()
     assert h["groq_reachable"] is True and h["groq_model"] == "openai/gpt-oss-120b"
+
+
+def test_copilot_proposal_written_by_model_is_flagged_llm(db):
+    from app.agents.copilot import run_llm_copilot
+    from app.models import Customer, Proposal
+
+    c = Customer(email="alice@example.com", first_name="Alice", last_name="Shah")
+    db.add(c)
+    db.commit()
+    db_session = db
+
+    class Scripted:
+        def __init__(self):
+            self.n = 0
+
+        def complete(self, messages, tools):
+            self.n += 1
+            if self.n == 1:
+                return {"role": "assistant", "content": "", "tool_calls": [{
+                    "id": "c1", "type": "function", "function": {
+                        "name": "draft_follow_up_email",
+                        "arguments": json.dumps({"customer_id": c.id, "subject": "Thank you!", "body": "Hi, thanks."}),
+                    }}]}, "openai/gpt-oss-120b"
+            return {"role": "assistant", "content": "Drafted it."}, "openai/gpt-oss-120b"
+
+    reply = run_llm_copilot(db_session, [{"role": "user", "content": "thank-you email"}], Scripted())
+    p = db_session.get(Proposal, reply.proposals_created[0])
+    assert p.is_llm_generated is True
+    assert p.evidence["llm_model"] == "openai/gpt-oss-120b"
+
+
+def test_groq_waits_and_retries_on_rate_limit(groq_settings, monkeypatch):
+    calls, slept = [], []
+    ok = _fake_post("Alice is now VIP.", calls)
+
+    def flaky(url, json=None, timeout=None, headers=None):
+        if len(calls) == 0 and not slept:
+            return httpx.Response(429, headers={"retry-after": "1.5"}, request=httpx.Request("POST", url))
+        return ok(url, json=json, timeout=timeout, headers=headers)
+
+    monkeypatch.setattr(llm_module.httpx, "post", flaky)
+    monkeypatch.setattr(llm_module.time, "sleep", slept.append)
+    res = GroqLLM().explain_segment({"name": "Alice"}, "vip")
+    assert slept == [1.5] and res.is_llm_generated
