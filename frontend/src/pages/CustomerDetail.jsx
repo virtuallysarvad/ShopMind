@@ -33,7 +33,7 @@ export default function CustomerDetail() {
   const customerProposals = proposals?.filter((p) => p.customer_id === customer.id) || [];
 
   return (
-    <div className="animate-in">
+    <div className="animate-in page-body">
       <Link to="/customers" className="btn btn-outline btn-sm" style={{ marginBottom: '20px' }}>
         <ArrowLeft size={14} /> Back to Customers
       </Link>
