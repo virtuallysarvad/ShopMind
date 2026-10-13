@@ -16,6 +16,10 @@ if ! wp core is-installed 2>/dev/null; then
     --admin_user=admin --admin_password=admin --admin_email=admin@example.com --skip-email
 fi
 
+echo "==> Updating WordPress (current WooCommerce needs WordPress 7.0+)"
+wp core update
+wp core update-db
+
 echo "==> Pretty permalinks (needed for /wp-json/)"
 wp rewrite structure '/%postname%/'
 cat > .htaccess <<'HT'
