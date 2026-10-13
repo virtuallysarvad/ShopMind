@@ -75,7 +75,8 @@ function LlmStatus() {
   const down =
     (provider === 'lmstudio' && health?.lmstudio_reachable === false) ||
     (provider === 'ollama' && health?.ollama_reachable === false) ||
-    (provider === 'openai' && health?.openai_reachable === false);
+    (provider === 'openai' && health?.openai_reachable === false) ||
+    (provider === 'groq' && health?.groq_reachable === false);
 
   let label = 'Connecting...';
   if (health) {
@@ -86,6 +87,10 @@ function LlmStatus() {
       label = down
         ? (health.openai_key_set ? 'ChatGPT unreachable, using templates' : 'ChatGPT: no API key, using templates')
         : `ChatGPT · ${health.openai_model}`;
+    } else if (provider === 'groq') {
+      label = down
+        ? (health.groq_key_set ? 'Groq unreachable, using templates' : 'Groq: no API key, using templates')
+        : `Groq · ${health.groq_model}`;
     } else if (provider === 'ollama') {
       label = down ? 'Ollama unreachable, using templates' : 'Ollama · local model';
     } else {

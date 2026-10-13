@@ -74,3 +74,39 @@ def test_health_reports_openai(client, openai_settings, monkeypatch):
     monkeypatch.setattr("app.main.openai_reachable", lambda: True)
     h = client.get("/health").json()
     assert h["llm_provider"] == "openai" and h["openai_model"] == "gpt-5.4-mini" and h["openai_reachable"] is True
+
+
+# ── Groq (free tier, OpenAI-compatible) ────────────────────────────────────
+
+from app.agents.llm import GroqLLM
+
+
+@pytest.fixture
+def groq_settings(monkeypatch):
+    monkeypatch.setattr(settings, "llm_provider", "groq")
+    monkeypatch.setattr(settings, "groq_api_key", "gsk-test")
+    monkeypatch.setattr(settings, "groq_model", "openai/gpt-oss-120b")
+
+
+def test_groq_factory_and_request(groq_settings, monkeypatch):
+    client = get_llm()
+    assert isinstance(client.primary, GroqLLM)
+    calls = []
+    monkeypatch.setattr(llm_module.httpx, "post", _fake_post('{"subject": "Hi", "body": "Thanks"}', calls))
+    res = client.draft_follow_up({"name": "Alice"}, "first_purchase", {})
+    assert calls[0]["url"] == "https://api.groq.com/openai/v1/chat/completions"
+    assert calls[0]["headers"]["Authorization"] == "Bearer gsk-test"
+    assert calls[0]["json"]["model"] == "openai/gpt-oss-120b"
+    assert res.is_llm_generated
+
+
+def test_groq_rate_limit_falls_back(groq_settings, monkeypatch):
+    monkeypatch.setattr(llm_module.httpx, "post", _fake_post("", [], status=429))
+    assert get_llm().explain_issue("payment_failed", {"id": 1}).is_llm_generated is False
+
+
+def test_groq_copilot_and_health(client, groq_settings, monkeypatch):
+    assert copilot_module.get_chat_model().base_url == "https://api.groq.com/openai/v1"
+    monkeypatch.setattr("app.main.groq_reachable", lambda: True)
+    h = client.get("/health").json()
+    assert h["groq_reachable"] is True and h["groq_model"] == "openai/gpt-oss-120b"

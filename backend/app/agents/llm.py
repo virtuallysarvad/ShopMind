@@ -21,6 +21,7 @@ Clients
 * :class:`LMStudioLLM` — local model served by LM Studio's OpenAI-compatible
   API (``/v1/chat/completions``), no API keys.
 * :class:`OpenAILLM` — ChatGPT via the OpenAI API (``SHOPMIND_OPENAI_API_KEY``).
+* :class:`GroqLLM` — Groq free tier, OpenAI's open gpt-oss models (``SHOPMIND_GROQ_API_KEY``).
 * :class:`FallbackLLM` — tries a real model, degrades to ``FakeLLM`` on any
   network/timeout/invalid-output error.
 * :func:`get_llm` — factory returning the client selected by ``llm_provider``.
@@ -463,6 +464,21 @@ class OpenAILLM(LMStudioLLM):
             logger.warning("SHOPMIND_LLM_PROVIDER=openai but SHOPMIND_OPENAI_API_KEY is empty; templates will be used")
 
 
+class GroqLLM(OpenAILLM):
+    """Groq's free-tier, OpenAI-compatible API running OpenAI's open-weight
+    gpt-oss models (strict JSON schema supported).  Free tier is rate limited,
+    so a 429 simply falls back to the templates."""
+
+    label = "Groq"
+    send_temperature = True
+
+    def __init__(self, api_key: str | None = None, model: str | None = None,
+                 base_url: str | None = None, timeout: int | None = None):
+        super().__init__(api_key=api_key if api_key is not None else settings.groq_api_key,
+                         model=model or settings.groq_model,
+                         base_url=base_url or settings.groq_base_url, timeout=timeout)
+
+
 # ── FallbackLLM: never let the model break order processing ───────────────
 
 class FallbackLLM:
@@ -515,6 +531,8 @@ def get_llm() -> LLMClient:
         return FallbackLLM(primary=LMStudioLLM(), fallback=FakeLLM())
     if settings.llm_provider == "openai":
         return FallbackLLM(primary=OpenAILLM(), fallback=FakeLLM())
+    if settings.llm_provider == "groq":
+        return FallbackLLM(primary=GroqLLM(), fallback=FakeLLM())
     return FakeLLM()
 
 
@@ -555,13 +573,20 @@ def lmstudio_reachable(base_url: str | None = None, timeout: float = 2.0) -> boo
         return False
 
 
-def openai_reachable(timeout: float = 3.0) -> bool:
-    """True when the OpenAI API accepts the configured key (GET /models is free)."""
-    if not settings.openai_api_key:
+def openai_reachable(timeout: float = 3.0, base_url: str | None = None,
+                     api_key: str | None = None) -> bool:
+    """True when an OpenAI-compatible API accepts the key (GET /models costs nothing)."""
+    base_url = base_url or settings.openai_base_url
+    api_key = settings.openai_api_key if api_key is None else api_key
+    if not api_key:
         return False
     try:
-        r = httpx.get(f"{settings.openai_base_url.rstrip('/')}/models",
-                      headers={"Authorization": f"Bearer {settings.openai_api_key}"}, timeout=timeout)
+        r = httpx.get(f"{base_url.rstrip('/')}/models",
+                      headers={"Authorization": f"Bearer {api_key}"}, timeout=timeout)
         return r.status_code == 200
     except httpx.HTTPError:
         return False
+
+
+def groq_reachable(timeout: float = 3.0) -> bool:
+    return openai_reachable(timeout, settings.groq_base_url, settings.groq_api_key)

@@ -121,6 +121,9 @@ def get_chat_model() -> ChatModel | None:
     if settings.llm_provider == "openai" and settings.openai_api_key:
         return OpenAICompatChat(settings.openai_base_url, settings.openai_model,
                                 api_key=settings.openai_api_key, send_temperature=False)
+    if settings.llm_provider == "groq" and settings.groq_api_key:
+        return OpenAICompatChat(settings.groq_base_url, settings.groq_model,
+                                api_key=settings.groq_api_key)
     return None
 
 

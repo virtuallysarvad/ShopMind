@@ -356,3 +356,4 @@ Prompt: "Can you please integrate ChatGPT API maybe? Instead of those hardcoded 
 - Copilot's `OpenAICompatChat` takes an API key, so ChatGPT drives the same tool loop.
 - `/health` reports the OpenAI model and key status, and the frontend pill shows `ChatGPT · model`.
 - 7 new tests (`tests/test_openai.py`), 133 total. A live API call was not run from the sandbox (no key).
+- Follow-up prompt: "A friend says the API key is free on groq.com, can you integrate that?" Added `GroqLLM` (provider `groq`, default `openai/gpt-oss-120b`). It also drives Copilot, `/health` reports `groq_reachable`, and the pill reads `Groq · model`. 3 more tests, 136 total.

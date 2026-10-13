@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_model: str = "gpt-5.4-mini"
     openai_base_url: str = "https://api.openai.com/v1"
+    # "groq"     -> free tier at console.groq.com (OpenAI's open gpt-oss models), FakeLLM as fallback
+    groq_api_key: str = ""
+    groq_model: str = "openai/gpt-oss-120b"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
     llm_timeout_seconds: int = 30
 
     # App

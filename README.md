@@ -165,3 +165,15 @@ SHOPMIND_OPENAI_MODEL=gpt-5.4-mini
 ```
 
 ChatGPT then writes the segment explanations, follow-up emails (strict JSON schema) and issue notes, and drives Shop Copilot's tool calls. Rules still make every decision and every action still needs approval. With a missing or bad key, or if the API is down, ShopMind falls back to the templates and labels that text as not AI-written. `/health` shows `openai_reachable`, and the status pill reads `ChatGPT · <model>`. Any OpenAI-compatible endpoint works too, via `SHOPMIND_OPENAI_BASE_URL`.
+
+## Groq (free)
+
+Free API key from console.groq.com/keys. It runs OpenAI's open-weight `gpt-oss-120b` with strict JSON schema and tool calling.
+
+```
+SHOPMIND_LLM_PROVIDER=groq
+SHOPMIND_GROQ_API_KEY=gsk_...
+SHOPMIND_GROQ_MODEL=openai/gpt-oss-120b
+```
+
+The free tier is rate limited (about 30 requests a minute and 8K tokens a minute for gpt-oss-120b, per Groq's docs). When it hits the limit (HTTP 429), ShopMind falls back to the templates for that one proposal.
