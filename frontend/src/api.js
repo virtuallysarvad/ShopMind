@@ -2,7 +2,8 @@
  * API client for ShopMind backend.
  */
 
-const API_BASE = 'http://localhost:8000';
+// Override with VITE_API_BASE (e.g. in frontend/.env.local); defaults to the local backend.
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
 async function request(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {

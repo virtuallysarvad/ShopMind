@@ -1,9 +1,10 @@
-# ShopMind — Handoff: real local LLM via Ollama (FakeLLM kept as fallback)
+# ShopMind — Handoff: real local LLM via LM Studio or Ollama (FakeLLM kept as fallback)
 
 **Date**: 2026-10-13
 **Author**: Buffy (Freebuff coding agent), on the DeepSeek V4.1 Flash model
 **Scope**: replace the template-only `FakeLLM` with a real local LLM through Ollama, keeping `FakeLLM` as the fallback — without touching any segmentation, issue-detection or approval logic.
-**Status**: complete and verified. `pytest` → 63 passed; frontend builds; live smoke tests run against both the fallback and the real HTTP path. Ports left free, seeded DB left in place.
+**Status**: `pytest` → **84 passed** (42 original + 21 Ollama + 21 LM Studio). Providers: `fake` (default), `lmstudio` (recommended real path), `ollama`. Real-model HTTP paths are verified with mocked tests and a local stub only; a genuine live LM Studio run is still to be done and logged (see §7).
+**Phase 5 (review fixes)**: deprecated `on_event` → lifespan, `debug` now defaults to `False` (unsigned webhooks rejected), frontend `API_BASE` configurable via `VITE_API_BASE`, `llm.py` cleanup (shared prompt helper used by both providers, no per-call state on `LMStudioLLM`, dead code removed).
 
 ---
 
@@ -110,7 +111,12 @@ def ollama_reachable(base_url=None, timeout=2.0) -> bool: ...   # GET {base_url}
 | `SHOPMIND_LLM_PROVIDER` | `fake` |
 | `SHOPMIND_OLLAMA_BASE_URL` | `http://localhost:11434` |
 | `SHOPMIND_OLLAMA_MODEL` | `qwen2.5:7b` |
-| `SHOPMIND_LLM_TIMEOUT_SECONDS` | `30` |
+| `SHOPMIND_LMSTUDIO_BASE_URL` | `http://localhost:1234/v1` |
+| `SHOPMIND_LMSTUDIO_MODEL` | `qwen2.5-7b-instruct` (must match an id from `GET /v1/models`) |
+| `SHOPMIND_LLM_TIMEOUT_SECONDS` | `30` (shared by both real providers) |
+| `SHOPMIND_DEBUG` | `false` (set `true` only to accept unsigned webhooks locally) |
+
+Frontend: `VITE_API_BASE` (default `http://localhost:8000`), e.g. in `frontend/.env.local`.
 
 ### `/health`
 
@@ -118,7 +124,11 @@ def ollama_reachable(base_url=None, timeout=2.0) -> bool: ...   # GET {base_url}
 { "status": "healthy", "app": "ShopMind", "llm_provider": "ollama", "ollama_reachable": true }
 ```
 
-`ollama_reachable` is only present when `llm_provider == "ollama"`.
+```json
+{ "status": "healthy", "app": "ShopMind", "llm_provider": "lmstudio", "lmstudio_reachable": true, "lmstudio_models": ["qwen2.5-7b-instruct"] }
+```
+
+`ollama_reachable` is only present when `llm_provider == "ollama"`; `lmstudio_reachable` and `lmstudio_models` only when it is `"lmstudio"`.
 
 ---
 
@@ -126,7 +136,7 @@ def ollama_reachable(base_url=None, timeout=2.0) -> bool: ...   # GET {base_url}
 
 | Check | Command | Result |
 |---|---|---|
-| Backend suite | `cd backend && python -m pytest tests/ -q` | **exit 0 — 63 passed** (42 pre-existing tests pass unchanged, 21 new). Warnings only: FastAPI `on_event` deprecation, Starlette/httpx deprecation. |
+| Backend suite | `cd backend && python -m pytest tests/ -q` | **exit 0 — 84 passed** (42 original, 21 `test_llm.py`, 21 `test_lmstudio.py`). After Phase 5 the `on_event` deprecation warning is gone. |
 | Frontend build | `cd frontend && npm run build` | **exit 0** (Vite 8.3.4, `dist/` emitted). |
 | Fallback on a live server | `SHOPMIND_LLM_PROVIDER=ollama` with no Ollama running, POST a signed webhook order | `/health` → `ollama_reachable:false`; webhook `200`; proposal `is_llm_generated=False`, `evidence.llm_model=null`; approve → `executed`. Ingestion never breaks. |
 | Real HTTP path on a live server | same, with a local stub implementing Ollama's `/api/chat` + `/api/tags` | `/health` → `ollama_reachable:true`; proposal `is_llm_generated=True`, `evidence.llm_model="qwen2.5:7b"`, draft = validated `{subject, body}` JSON; approve → `executed`. |
@@ -156,9 +166,9 @@ Servers were stopped afterwards; ports 8000, 5173, 8011 and 11434 are free. The 
 
 ## 7. Remaining limitations (honest)
 
-- **No real model was executed.** Ollama is not installed on this machine, so the HTTP integration was verified against mocked httpx unit tests plus a protocol-faithful local stub. First real run should be `ollama pull qwen2.5:7b` and one webhook order, to confirm prompt quality.
+- **No real model has been executed yet.** Ollama is not installed and LM Studio was not running during verification, so both HTTP paths are verified only through mocked httpx tests (plus a local stub for Ollama). Next step: load Qwen2.5 7B Instruct in LM Studio, start the server, run with `SHOPMIND_LLM_PROVIDER=lmstudio`, check `/health`, send one signed webhook order, and record the result in `AI_USAGE.md`.
 - **`SHOPMIND_LLM_PROVIDER` defaults to `fake`**, so nothing changes for the demo unless that variable is set. This is deliberate — it keeps tests deterministic and offline.
-- **Draft shape differs by provider**: Ollama drafts are pretty-printed `{subject, body}` JSON stored in `proposed_action.draft`, while `FakeLLM` drafts are plain text. The Approval Inbox renders either verbatim.
+- **Draft shape differs by provider**: Ollama and LM Studio drafts are pretty-printed `{subject, body}` JSON stored in `proposed_action.draft`, while `FakeLLM` drafts are plain text. The Approval Inbox renders `{subject, body}` as a readable email and plain text as-is.
 - Stretch features from the original brief (cross-agent suggestion de-duplication, "Ask-your-CRM") remain unbuilt.
 
 ---

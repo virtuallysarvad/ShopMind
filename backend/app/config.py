@@ -26,7 +26,9 @@ class Settings(BaseSettings):
 
     # App
     app_name: str = "ShopMind"
-    debug: bool = True
+    # Off by default so unsigned webhooks are rejected. Set SHOPMIND_DEBUG=true
+    # only for local poking with curl (unsigned webhooks are then accepted).
+    debug: bool = False
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
     model_config = {"env_prefix": "SHOPMIND_", "env_file": ".env"}

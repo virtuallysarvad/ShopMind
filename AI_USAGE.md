@@ -257,3 +257,32 @@ npm run dev                                       # http://localhost:5173
 **Not touched** (intentionally, per the request)
 - `backend/tests/test_agents.py`, `test_core.py`, `test_llm.py`, `test_integration.py`, `conftest.py` — left exactly as Phase 3 left them.
 - All agent rule/detection/approval code unchanged.
+
+
+---
+
+# Phase 5 — Review fixes (Hark review → fixes, 2026-10-13)
+
+### Human prompt (intent)
+Sarvad asked Hark to review the repo after Phase 4 and then apply the fixes it found.
+
+### What the review found
+- `handoff.md` still described the Ollama-only state (63 tests, no LM Studio config/health).
+- `llm.py`: duplicate unreachable `return` in `_chat_messages`; `OllamaLLM` did not actually use the shared prompt helper; module docstring did not list `LMStudioLLM`; `LMStudioLLM` stored the response model on the instance (`_response_model_field`), which is shared state across calls.
+- FastAPI `@app.on_event("startup")` is deprecated (the warning in every test run).
+- `debug=True` by default meant unsigned webhooks were accepted out of the box.
+- Frontend `API_BASE` hardcoded to `http://localhost:8000`.
+
+### What changed
+- `backend/app/agents/llm.py` — removed dead code; both providers build messages through `_chat_messages`; `LMStudioLLM._chat` returns `(content, response_model)` so no per-call state lives on the client; docstrings updated.
+- `backend/app/main.py` — startup moved to a `lifespan` handler; logs a warning when debug mode accepts unsigned webhooks.
+- `backend/app/config.py` — `debug` defaults to `False` (`SHOPMIND_DEBUG=true` to opt in locally).
+- `frontend/src/api.js` — `API_BASE` reads `import.meta.env.VITE_API_BASE`, falls back to localhost.
+- `handoff.md` — provider list, config keys, `/health`, verification count and limitations brought up to date.
+
+### Verification actually performed
+- `python -m pytest tests/ -q` → **84 passed**, `on_event` deprecation warning gone. No test files were edited (every webhook test already signs its payload, so `debug=False` breaks nothing).
+- Frontend change is a one-line env fallback; run `npm run build` locally to confirm.
+
+### Still not done
+- **No genuine live LM Studio run yet.** That needs LM Studio running on the developer's machine; log the `/health` output and one real proposal here once done.
