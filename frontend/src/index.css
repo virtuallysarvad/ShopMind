@@ -643,3 +643,22 @@ button { font-family: inherit; }
 .woo-result.bad { background: var(--danger-bg); color: var(--danger); }
 .spin { animation: woo-spin 1s linear infinite; }
 @keyframes woo-spin { to { transform: rotate(360deg); } }
+
+/* New proposal form */
+.form { display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.field > span { font-weight: 600; color: var(--text-secondary, var(--text-muted)); }
+.field > span em { font-style: normal; font-weight: 400; color: var(--text-muted); }
+.field input, .field select, .field textarea {
+  font: inherit; font-size: 14px; padding: 9px 11px; border: 1px solid var(--border-strong);
+  border-radius: 10px; background: #fff; color: inherit; outline: none; resize: vertical;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent-primary); }
+.segmented { display: flex; gap: 4px; padding: 4px; background: var(--bg-subtle); border-radius: 12px; }
+.segmented button {
+  flex: 1; border: 0; background: transparent; padding: 8px 10px; border-radius: 9px;
+  font: inherit; font-size: 13px; cursor: pointer; color: var(--text-muted);
+}
+.segmented button.active { background: #fff; color: inherit; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.form-hint { font-size: 12px; color: var(--text-muted); margin: 0; }
+.form-error { font-size: 13px; color: var(--danger); margin: 0; }

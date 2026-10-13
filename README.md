@@ -113,7 +113,7 @@ If the local server is down, slow, or returns malformed output, ShopMind logs a 
 - **Order-Issue Watcher**: Detect failed payments, delayed shipping, repeated returns
 - **Shop Copilot**: Chat agent (like an AI CRM operator) that answers questions about the shop and acts through tools; every write becomes a pending proposal
 - **WooCommerce integration (two-way)**: REST API sync + verified webhooks in, approved actions written back out (see below)
-- **Approval Inbox**: All AI proposals require human approval before execution
+- **Approval Inbox**: All AI proposals require human approval before execution. **+ New proposal** lets a person add an email, segment change or order issue by hand (`POST /api/proposals`, agent `manual`, tagged "You"); it goes through the same approve → execute → WooCommerce write-back path.
 - **Timeline**: Every action is recorded as an auditable event
 
 ## Shop Copilot (agentic chat)

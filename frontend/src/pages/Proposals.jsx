@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, XCircle, ArrowUpDown, Bot, ExternalLink } from 'lucide-react';
+import { CheckCircle2, XCircle, ArrowUpDown, Bot, ExternalLink, Plus } from 'lucide-react';
 import { api } from '../api';
 import {
   useApi, formatDate, formatMoney, getInitials, getSegmentInfo,
@@ -10,6 +10,7 @@ import {
   KpiStrip, Pill, ViewToggle, Column, Avatar, CardDate, InactiveFlag,
   DropDock, Drawer, Toast, Loading, ErrorBox, useSearch,
 } from '../components/board';
+import NewProposal from '../components/NewProposal';
 
 // One board column per agent output type. Rules decide the type; humans decide the outcome.
 const COLUMNS = [
@@ -32,7 +33,11 @@ const AGENT_LABELS = {
   order_issue_watcher: 'Issue watcher',
   issue_watcher: 'Issue watcher',
   shop_copilot: 'Shop Copilot',
+  manual: 'You',
 };
+
+// Who wrote the card's text: a person, an LLM, or a rules template.
+const authorChip = (p) => (p.agent_name === 'manual' ? 'Human' : p.is_llm_generated ? 'LLM' : 'Rules');
 
 /**
  * If the proposal's draft is the {subject, body} JSON produced by the
@@ -66,6 +71,7 @@ export default function Proposals() {
   const [selected, setSelected] = useState(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
+  const [creating, setCreating] = useState(false);
   const clearToast = useCallback(() => setToast(''), []);
 
   const { data: proposals, loading, error, refetch } = useApi(() => api.getProposals());
@@ -169,6 +175,9 @@ export default function Proposals() {
         <div className="toolbar-spacer" />
         <span className="sort-label"><ArrowUpDown size={14} /> Newest first</span>
         <ViewToggle view={view} onChange={setView} />
+        <button className="btn btn-primary btn-sm" onClick={() => setCreating(true)}>
+          <Plus size={15} /> New proposal
+        </button>
       </div>
 
       {view === 'board' ? (
@@ -214,7 +223,7 @@ export default function Proposals() {
                   <td style={{ fontWeight: 500 }}>{p.title}</td>
                   <td>{fullName(customerById[p.customer_id])}</td>
                   <td>{AGENT_LABELS[p.agent_name] || p.agent_name}</td>
-                  <td>{p.is_llm_generated ? 'LLM' : 'Rules'}</td>
+                  <td>{authorChip(p)}</td>
                   <td><span className={`status-badge ${p.status}`}>{p.status}</span></td>
                   <td style={{ color: 'var(--text-muted)' }}>{formatDate(p.created_at)}</td>
                 </tr>
@@ -238,6 +247,20 @@ export default function Proposals() {
           onClose={() => setSelected(null)}
           onReview={review}
           onCustomer={() => navigate(`/customers/${selected.customer_id}`)}
+        />
+      )}
+
+      {creating && (
+        <NewProposal
+          customers={customers}
+          onClose={() => setCreating(false)}
+          onCreated={async (p) => {
+            setCreating(false);
+            setStatusFilter('pending');
+            setToast(`Added to inbox: ${p.title}`);
+            await refetch();
+            notifyDataChanged();
+          }}
         />
       )}
 
@@ -266,8 +289,8 @@ function ProposalCard({ proposal: p, customer, isDragging, onOpen, onDragStart, 
     >
       <div className="chips">
         <span className="chip">{AGENT_LABELS[p.agent_name] || p.agent_name}</span>
-        <span className={`chip ${p.is_llm_generated ? 'accent' : ''}`}>
-          {p.is_llm_generated ? 'LLM' : 'Rules'}
+        <span className={`chip ${p.agent_name === 'manual' ? 'info' : p.is_llm_generated ? 'accent' : ''}`}>
+          {authorChip(p)}
         </span>
         {p.status !== 'pending' && (
           <span className={`chip ${p.status === 'rejected' ? 'danger' : 'success'}`}>{p.status}</span>
@@ -315,7 +338,8 @@ function ProposalDrawer({ proposal: p, customer, busy, onClose, onReview, onCust
         <span className={`status-badge ${p.status}`}>{p.status}</span>
         <span className="chip"><Bot size={12} style={{ verticalAlign: '-2px' }} /> {AGENT_LABELS[p.agent_name] || p.agent_name}</span>
         <span className={`chip ${p.is_llm_generated ? 'accent' : ''}`}>
-          {p.is_llm_generated ? `LLM · ${p.evidence?.llm_model || 'model'}` : 'Rule-based template'}
+          {p.agent_name === 'manual' ? 'Written by hand'
+            : p.is_llm_generated ? `LLM · ${p.evidence?.llm_model || 'model'}` : 'Rule-based template'}
         </span>
       </div>
 
@@ -334,18 +358,18 @@ function ProposalDrawer({ proposal: p, customer, busy, onClose, onReview, onCust
 
       {isEmail && draft !== undefined ? (
         <div>
-          <div className="section-label">{p.is_llm_generated ? 'Draft email (LLM)' : 'Draft email (template)'}</div>
+          <div className="section-label">{p.agent_name === 'manual' ? 'Email' : p.is_llm_generated ? 'Draft email (LLM)' : 'Draft email (template)'}</div>
           {renderDraft(draft)}
         </div>
       ) : p.llm_explanation ? (
         <div>
-          <div className="section-label">{p.is_llm_generated ? 'Explanation (LLM)' : 'Explanation (rules)'}</div>
+          <div className="section-label">{p.agent_name === 'manual' ? 'Note' : p.is_llm_generated ? 'Explanation (LLM)' : 'Explanation (rules)'}</div>
           <div className="prose-box">{p.llm_explanation}</div>
         </div>
       ) : null}
 
       <div className="proposal-evidence">
-        <div className="section-label">Evidence the rules used</div>
+        <div className="section-label">{p.agent_name === 'manual' ? 'Context' : 'Evidence the rules used'}</div>
         <pre>{JSON.stringify(p.evidence, null, 2)}</pre>
       </div>
       <div className="proposal-evidence">
