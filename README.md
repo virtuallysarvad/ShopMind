@@ -138,6 +138,8 @@ ShopMind runs on demo data by default (`SHOPMIND_WOO_MODE=mock`). Set it to `liv
 | Store → ShopMind (real time) | Webhooks `order.created` / `order.updated` → `POST /webhooks/woocommerce/order` | Signature checked as WooCommerce sends it: base64 HMAC-SHA256 in `X-WC-Webhook-Signature`. The `webhook_id=` ping is acknowledged; `order.deleted` is ignored. |
 | ShopMind → Store | Runs when you **approve** a proposal | Segment change → customer meta `shopmind_segment`. Email → customer order note (WooCommerce emails it to the customer). Order issue → private order note. Failures are logged on the timeline and never block the approval. |
 
+In wp-admin, the segment ShopMind writes back shows as a **ShopMind segment** column on Users, on the user profile, and under the billing address on each order (`woocommerce/mu-plugins/shopmind-segment.php`).
+
 Auth follows the WooCommerce docs: Basic auth over HTTPS, OAuth 1.0a (HMAC-SHA256) over plain HTTP (local stores). `GET /api/woocommerce/status` checks the credentials.
 
 ### Local demo store (Docker, free)
