@@ -20,6 +20,7 @@ Clients
 * :class:`OllamaLLM` — local model served by Ollama, no API keys.
 * :class:`LMStudioLLM` — local model served by LM Studio's OpenAI-compatible
   API (``/v1/chat/completions``), no API keys.
+* :class:`OpenAILLM` — ChatGPT via the OpenAI API (``SHOPMIND_OPENAI_API_KEY``).
 * :class:`FallbackLLM` — tries a real model, degrades to ``FakeLLM`` on any
   network/timeout/invalid-output error.
 * :func:`get_llm` — factory returning the client selected by ``llm_provider``.
@@ -313,6 +314,7 @@ _FOLLOW_UP_JSON_SCHEMA = {
         "body": {"type": "string"},
     },
     "required": ["subject", "body"],
+    "additionalProperties": False,
 }
 
 
@@ -334,6 +336,13 @@ class LMStudioLLM:
         self.model = model or settings.lmstudio_model
         self.timeout = timeout or settings.llm_timeout_seconds
 
+    label = "LM Studio"
+    api_key: str = ""
+    send_temperature = True
+
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+
     def _chat(
         self, system_prompt: str, context: dict, json_mode: bool = False
     ) -> tuple[str, str | None]:
@@ -346,9 +355,10 @@ class LMStudioLLM:
         payload: dict = {
             "model": self.model,
             "messages": messages,
-            "temperature": 0.3,
             "stream": False,
         }
+        if self.send_temperature:
+            payload["temperature"] = 0.3
         if json_mode:
             payload["response_format"] = {
                 "type": "json_schema",
@@ -360,7 +370,8 @@ class LMStudioLLM:
             }
 
         response = httpx.post(
-            f"{self.base_url}/chat/completions", json=payload, timeout=self.timeout
+            f"{self.base_url}/chat/completions", json=payload,
+            timeout=self.timeout, **({"headers": self._headers()} if self.api_key else {}),
         )
         response.raise_for_status()
 
@@ -368,7 +379,7 @@ class LMStudioLLM:
         message = (completion.get("choices") or [{}])[0].get("message", {})
         content = (message or {}).get("content", "")
         if not content or not content.strip():
-            raise ValueError("LM Studio returned an empty response")
+            raise ValueError(f"{self.label} returned an empty response")
         # Return the model the server says produced the text alongside it, so
         # no per-call state is kept on the (shared) client instance.
         return content.strip(), completion.get("model")
@@ -407,16 +418,16 @@ class LMStudioLLM:
             parsed = json.loads(raw)
         except json.JSONDecodeError as e:
             raise ValueError(
-                f"LM Studio returned invalid JSON for the email draft: {e}"
+                f"{self.label} returned invalid JSON for the email draft: {e}"
             ) from e
 
         if not isinstance(parsed, dict):
-            raise ValueError("LM Studio draft must be a JSON object")
+            raise ValueError(f"{self.label} draft must be a JSON object")
         subject = str(parsed.get("subject") or "").strip()
         body = str(parsed.get("body") or "").strip()
         if not subject or not body:
             raise ValueError(
-                'LM Studio draft must contain "subject" and "body"'
+                f'{self.label} draft must contain "subject" and "body"'
             )
 
         draft = json.dumps(
@@ -433,6 +444,23 @@ class LMStudioLLM:
         text, model = self._chat(ISSUE_SYSTEM_PROMPT, context)
         return self._result(text, model)
 
+
+
+class OpenAILLM(LMStudioLLM):
+    """ChatGPT via the OpenAI API: same prompts, evidence and JSON schema as
+    LM Studio, plus a Bearer API key.  GPT-5-family models only accept the
+    default temperature, so none is sent."""
+
+    label = "OpenAI"
+    send_temperature = False
+
+    def __init__(self, api_key: str | None = None, model: str | None = None,
+                 base_url: str | None = None, timeout: int | None = None):
+        super().__init__(base_url=base_url or settings.openai_base_url,
+                         model=model or settings.openai_model, timeout=timeout)
+        self.api_key = api_key if api_key is not None else settings.openai_api_key
+        if not self.api_key:
+            logger.warning("SHOPMIND_LLM_PROVIDER=openai but SHOPMIND_OPENAI_API_KEY is empty; templates will be used")
 
 
 # ── FallbackLLM: never let the model break order processing ───────────────
@@ -485,6 +513,8 @@ def get_llm() -> LLMClient:
         return FallbackLLM(primary=OllamaLLM(), fallback=FakeLLM())
     if settings.llm_provider == "lmstudio":
         return FallbackLLM(primary=LMStudioLLM(), fallback=FakeLLM())
+    if settings.llm_provider == "openai":
+        return FallbackLLM(primary=OpenAILLM(), fallback=FakeLLM())
     return FakeLLM()
 
 
@@ -521,5 +551,17 @@ def lmstudio_reachable(base_url: str | None = None, timeout: float = 2.0) -> boo
     url = (base_url or settings.lmstudio_base_url).rstrip("/")
     try:
         return httpx.get(f"{url}/models", timeout=timeout).status_code == 200
+    except httpx.HTTPError:
+        return False
+
+
+def openai_reachable(timeout: float = 3.0) -> bool:
+    """True when the OpenAI API accepts the configured key (GET /models is free)."""
+    if not settings.openai_api_key:
+        return False
+    try:
+        r = httpx.get(f"{settings.openai_base_url.rstrip('/')}/models",
+                      headers={"Authorization": f"Bearer {settings.openai_api_key}"}, timeout=timeout)
+        return r.status_code == 200
     except httpx.HTTPError:
         return False

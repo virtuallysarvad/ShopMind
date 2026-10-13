@@ -347,3 +347,12 @@ None. The frontend now requests `limit=200` (the API's max) and joins customers 
 
 ### Not yet verified
 - The Docker store and setup script were not run (no Docker in the build sandbox). The first run on the laptop is the real end-to-end test; log it here.
+
+
+# Phase 9 — ChatGPT provider (Hark)
+
+Prompt: "Can you please integrate ChatGPT API maybe? Instead of those hardcoded messages."
+- `OpenAILLM` (llm.py) reuses the LM Studio prompts and evidence. It adds a Bearer key, sends no temperature (GPT-5 models only accept the default), and uses a strict JSON schema for emails (`additionalProperties: false`).
+- Copilot's `OpenAICompatChat` takes an API key, so ChatGPT drives the same tool loop.
+- `/health` reports the OpenAI model and key status, and the frontend pill shows `ChatGPT · model`.
+- 7 new tests (`tests/test_openai.py`), 133 total. A live API call was not run from the sandbox (no key).

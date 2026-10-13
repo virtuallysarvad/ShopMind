@@ -88,20 +88,24 @@ class ChatModel(Protocol):
 
 
 class OpenAICompatChat:
-    """POST /chat/completions with tools; works for LM Studio and Ollama /v1."""
+    """POST /chat/completions with tools; works for LM Studio, Ollama /v1 and OpenAI."""
 
-    def __init__(self, base_url: str, model: str, timeout: int | None = None):
+    def __init__(self, base_url: str, model: str, timeout: int | None = None,
+                 api_key: str = "", send_temperature: bool = True):
         self.base_url = base_url.rstrip("/")
         self.model = model
+        self.api_key = api_key
+        self.send_temperature = send_temperature
         self.timeout = timeout or max(settings.llm_timeout_seconds, 60)
 
     def complete(self, messages, tools):
-        resp = httpx.post(
-            f"{self.base_url}/chat/completions",
-            json={"model": self.model, "messages": messages, "tools": tools,
-                  "tool_choice": "auto", "temperature": 0.2, "stream": False},
-            timeout=self.timeout,
-        )
+        payload = {"model": self.model, "messages": messages, "tools": tools,
+                   "tool_choice": "auto", "stream": False}
+        if self.send_temperature:
+            payload["temperature"] = 0.2
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        resp = httpx.post(f"{self.base_url}/chat/completions", json=payload,
+                          timeout=self.timeout, **({"headers": headers} if headers else {}))
         resp.raise_for_status()
         data = resp.json()
         msg = (data.get("choices") or [{}])[0].get("message") or {}
@@ -114,6 +118,9 @@ def get_chat_model() -> ChatModel | None:
         return OpenAICompatChat(settings.lmstudio_base_url, settings.lmstudio_model)
     if settings.llm_provider == "ollama":
         return OpenAICompatChat(settings.ollama_base_url.rstrip("/") + "/v1", settings.ollama_model)
+    if settings.llm_provider == "openai" and settings.openai_api_key:
+        return OpenAICompatChat(settings.openai_base_url, settings.openai_model,
+                                api_key=settings.openai_api_key, send_temperature=False)
     return None
 
 
@@ -149,7 +156,6 @@ def run_llm_copilot(db: Session, history: list[dict], model: ChatModel) -> Copil
             messages.append({
                 "role": "tool",
                 "tool_call_id": call.get("id") or f"call_{len(steps)}_{i}",
-                "name": name,
                 "content": json.dumps(result, ensure_ascii=False, default=str),
             })
     return CopilotReply(
@@ -283,6 +289,6 @@ def chat(db: Session, history: list[dict], model: ChatModel | None = "default") 
             logger.warning("Copilot LLM failed (%s: %s); using rules", type(e).__name__, e)
             db.rollback()
             out = RuleCopilot().run(db, history[-1]["content"])
-            out.note = "Local model unreachable, answered with built-in rules."
+            out.note = "Model unreachable, answered with built-in rules."
             return out
     return RuleCopilot().run(db, history[-1]["content"])

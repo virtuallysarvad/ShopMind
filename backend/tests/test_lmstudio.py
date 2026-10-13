@@ -164,7 +164,7 @@ class TestLMStudioLLM:
             "json_schema": {
                 "name": "follow_up_email",
                 "strict": True,
-                "schema": {"type": "object", "properties": {"subject": {"type": "string"}, "body": {"type": "string"}}, "required": ["subject", "body"]},
+                "schema": {"type": "object", "properties": {"subject": {"type": "string"}, "body": {"type": "string"}}, "required": ["subject", "body"], "additionalProperties": False},
             },
         }
 

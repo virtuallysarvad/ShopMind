@@ -74,13 +74,18 @@ function LlmStatus() {
   const provider = health?.llm_provider ?? 'fake';
   const down =
     (provider === 'lmstudio' && health?.lmstudio_reachable === false) ||
-    (provider === 'ollama' && health?.ollama_reachable === false);
+    (provider === 'ollama' && health?.ollama_reachable === false) ||
+    (provider === 'openai' && health?.openai_reachable === false);
 
   let label = 'Connecting...';
   if (health) {
     if (provider === 'lmstudio') {
       const model = health.lmstudio_models?.[0];
       label = down ? 'LM Studio unreachable, using templates' : `LM Studio${model ? ` · ${model}` : ''}`;
+    } else if (provider === 'openai') {
+      label = down
+        ? (health.openai_key_set ? 'ChatGPT unreachable, using templates' : 'ChatGPT: no API key, using templates')
+        : `ChatGPT · ${health.openai_model}`;
     } else if (provider === 'ollama') {
       label = down ? 'Ollama unreachable, using templates' : 'Ollama · local model';
     } else {
