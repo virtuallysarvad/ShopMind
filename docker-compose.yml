@@ -1,0 +1,35 @@
+# One command to run ShopMind:  docker compose up --build
+#   Dashboard: http://localhost:3000    API: http://localhost:8000/docs
+# Defaults: demo data (mock WooCommerce) + offline FakeLLM, so it runs with no keys.
+# For a free real LLM, put SHOPMIND_LLM_PROVIDER=groq and SHOPMIND_GROQ_API_KEY in backend/.env.
+# For the local WooCommerce store, see docker-compose.woocommerce.yml.
+services:
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      SHOPMIND_DATABASE_URL: sqlite:////data/shopmind.db
+    volumes:
+      - shopmind_data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE: http://localhost:8000
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  shopmind_data:
