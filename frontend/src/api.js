@@ -22,16 +22,18 @@ export const api = {
   getDashboard: () => request('/api/dashboard'),
 
   // Customers
-  getCustomers: (segment) => {
-    const params = segment ? `?segment=${segment}` : '';
-    return request(`/api/customers${params}`);
+  getCustomers: (segment, limit = 200) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (segment) params.set('segment', segment);
+    return request(`/api/customers?${params}`);
   },
   getCustomer: (id) => request(`/api/customers/${id}`),
 
   // Orders
-  getOrders: (customerId) => {
-    const params = customerId ? `?customer_id=${customerId}` : '';
-    return request(`/api/orders${params}`);
+  getOrders: (customerId, limit = 200) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (customerId) params.set('customer_id', String(customerId));
+    return request(`/api/orders?${params}`);
   },
   getOrder: (id) => request(`/api/orders/${id}`),
 
@@ -39,9 +41,10 @@ export const api = {
   getTimeline: (customerId) => request(`/api/customers/${customerId}/timeline`),
 
   // Proposals
-  getProposals: (status) => {
-    const params = status ? `?status=${status}` : '';
-    return request(`/api/proposals${params}`);
+  getProposals: (status, limit = 200) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (status) params.set('status', status);
+    return request(`/api/proposals?${params}`);
   },
   getProposal: (id) => request(`/api/proposals/${id}`),
   reviewProposal: (id, action, reviewedBy = 'admin') =>

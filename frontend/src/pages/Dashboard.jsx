@@ -15,7 +15,7 @@ export default function Dashboard() {
   const stats = data;
 
   return (
-    <div className="animate-in">
+    <div className="animate-in page-body">
       <div className="page-header">
         <h2>Dashboard</h2>
         <p>Overview of your store's AI-powered CRM</p>
