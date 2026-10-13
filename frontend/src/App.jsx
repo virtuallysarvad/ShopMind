@@ -1,9 +1,9 @@
-import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard, Users, ShoppingCart, Inbox, Brain,
-} from 'lucide-react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
+import { LayoutDashboard, Users, ShoppingCart, Inbox, Brain, Search, Sparkles } from 'lucide-react';
 import { api } from './api';
 import { useApi } from './utils';
+import { SearchContext } from './components/board';
 import Dashboard from './pages/Dashboard';
 import Customers from './pages/Customers';
 import CustomerDetail from './pages/CustomerDetail';
@@ -12,97 +12,111 @@ import Proposals from './pages/Proposals';
 
 import './App.css';
 
-function Sidebar() {
-  const { data: dashboard } = useApi(() => api.getDashboard());
-  const { data: health } = useApi(() => api.health());
+function TopBar({ query, setQuery }) {
+  const { data: dashboard, refetch } = useApi(() => api.getDashboard());
   const pendingCount = dashboard?.pending_proposals || 0;
+  const inputRef = useRef(null);
 
-  // Active LLM provider comes from the backend so the footer never lies about
-  // rule-based (FakeLLM) vs. real (Ollama / LM Studio) output.
-  const provider = health?.llm_provider ?? 'fake';
-  const lmstudioDown =
-    provider === 'lmstudio' && health?.lmstudio_reachable === false;
-  const ollamaDown = provider === 'ollama' && health?.ollama_reachable === false;
-  const llmLabel =
-    provider === 'lmstudio'
-      ? (lmstudioDown
-          ? 'LM Studio • Local Model (unreachable)'
-          : 'LM Studio • Local Model')
-    : ollamaDown
-      ? 'Ollama • Local Model (unreachable)'
-      : provider === 'ollama'
-        ? 'Ollama • Local Model'
-        : 'FakeLLM Active • Rule-Based';
-  const dotDown = lmstudioDown || ollamaDown;
+  useEffect(() => {
+    window.addEventListener('shopmind:changed', refetch);
+    return () => window.removeEventListener('shopmind:changed', refetch);
+  }, [refetch]);
+
+  // "/" focuses search, like the design.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const link = ({ isActive }) => `nav-link ${isActive ? 'active' : ''}`;
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-brand">
-        <div className="sidebar-brand-icon">
-          <Brain size={22} color="white" />
-        </div>
-        <div>
-          <h1>ShopMind</h1>
-          <span>AI-Powered CRM</span>
-        </div>
+    <header className="topbar">
+      <div className="topbar-brand">
+        <span className="topbar-brand-icon"><Brain size={16} /></span>
+        ShopMind
       </div>
-
-      <nav className="sidebar-nav">
-        <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          <LayoutDashboard size={18} />
-          <span>Dashboard</span>
-        </NavLink>
-        <NavLink to="/customers" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          <Users size={18} />
-          <span>Customers</span>
-        </NavLink>
-        <NavLink to="/orders" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          <ShoppingCart size={18} />
-          <span>Orders</span>
-        </NavLink>
-        <NavLink to="/proposals" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          <Inbox size={18} />
-          <span>Approval Inbox</span>
+      <nav className="topbar-nav">
+        <NavLink to="/" end className={link}><LayoutDashboard size={16} /> Dashboard</NavLink>
+        <NavLink to="/proposals" className={link}>
+          <Inbox size={16} /> Approvals
           {pendingCount > 0 && <span className="nav-badge">{pendingCount}</span>}
         </NavLink>
+        <NavLink to="/customers" className={link}><Users size={16} /> Customers</NavLink>
+        <NavLink to="/orders" className={link}><ShoppingCart size={16} /> Orders</NavLink>
       </nav>
+      <div className="topbar-spacer" />
+      <label className="search-box">
+        <Search size={15} />
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search customers, orders, proposals..."
+        />
+        <span className="kbd">/</span>
+      </label>
+    </header>
+  );
+}
 
-      <div style={{
-        padding: '16px 12px',
-        borderTop: '1px solid var(--border)',
-        marginTop: 'auto',
-        fontSize: '0.72rem',
-        color: 'var(--text-muted)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-          <div style={{
-            width: '8px', height: '8px', borderRadius: '50%',
-            background: dotDown ? 'var(--warning)' : 'var(--success)',
-            boxShadow: `0 0 6px ${dotDown ? 'var(--warning)' : 'var(--success)'}`,
-          }} />
-          {health ? (dotDown ? 'LLM Offline' : 'System Online') : 'Connecting...'}
-        </div>
-        <div>{llmLabel}</div>
-      </div>
-    </aside>
+/** Bottom-right pill: which LLM writes the text, and whether it answers. */
+function LlmStatus() {
+  const { data: health } = useApi(() => api.health());
+  const provider = health?.llm_provider ?? 'fake';
+  const down =
+    (provider === 'lmstudio' && health?.lmstudio_reachable === false) ||
+    (provider === 'ollama' && health?.ollama_reachable === false);
+
+  let label = 'Connecting...';
+  if (health) {
+    if (provider === 'lmstudio') {
+      const model = health.lmstudio_models?.[0];
+      label = down ? 'LM Studio unreachable, using templates' : `LM Studio${model ? ` · ${model}` : ''}`;
+    } else if (provider === 'ollama') {
+      label = down ? 'Ollama unreachable, using templates' : 'Ollama · local model';
+    } else {
+      label = 'FakeLLM · rule-based templates';
+    }
+  }
+
+  return (
+    <div className="status-pill" title="Rules make every decision; the LLM only writes the text.">
+      <span className={`status-dot ${down || !health ? 'down' : ''}`} />
+      <Sparkles size={13} /> {label}
+    </div>
   );
 }
 
 function App() {
+  const [query, setQuery] = useState('');
+  const setQ = useCallback((q) => setQuery(q), []);
+
   return (
     <BrowserRouter>
-      <div className="app-layout">
-        <Sidebar />
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/customers" element={<Customers />} />
-            <Route path="/customers/:id" element={<CustomerDetail />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/proposals" element={<Proposals />} />
-          </Routes>
-        </main>
-      </div>
+      <SearchContext.Provider value={{ query, setQuery: setQ }}>
+        <div className="app-layout">
+          <div className="app-panel">
+            <TopBar query={query} setQuery={setQ} />
+            <main className="main-content">
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/proposals" element={<Proposals />} />
+                <Route path="/customers" element={<Customers />} />
+                <Route path="/customers/:id" element={<CustomerDetail />} />
+                <Route path="/orders" element={<Orders />} />
+              </Routes>
+            </main>
+          </div>
+          <LlmStatus />
+        </div>
+      </SearchContext.Provider>
     </BrowserRouter>
   );
 }
