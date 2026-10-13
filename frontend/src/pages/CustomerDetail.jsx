@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import { useApi, formatCurrency, formatDate, getSegmentInfo, getInitials } from '../utils';
-import { ArrowLeft, Mail, Phone, Calendar, ShoppingCart, DollarSign } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Calendar, ShoppingCart, IndianRupee } from 'lucide-react';
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -67,7 +67,7 @@ export default function CustomerDetail() {
           <div className="stat-label">Orders</div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon green"><DollarSign size={20} /></div>
+          <div className="stat-icon green"><IndianRupee size={20} /></div>
           <div className="stat-value">{formatCurrency(customer.total_spent)}</div>
           <div className="stat-label">Total Spent</div>
         </div>

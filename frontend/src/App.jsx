@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, ShoppingCart, Inbox, Brain, Search, Sparkles } from 'lucide-react';
+import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { LayoutDashboard, Users, ShoppingCart, Inbox, Brain, Search, Sparkles, Bot } from 'lucide-react';
 import { api } from './api';
 import { useApi } from './utils';
 import { SearchContext } from './components/board';
@@ -9,6 +9,7 @@ import Customers from './pages/Customers';
 import CustomerDetail from './pages/CustomerDetail';
 import Orders from './pages/Orders';
 import Proposals from './pages/Proposals';
+import CopilotPage, { CopilotProvider, CopilotLauncher } from './components/Copilot';
 
 import './App.css';
 
@@ -48,6 +49,7 @@ function TopBar({ query, setQuery }) {
           <Inbox size={16} /> Approvals
           {pendingCount > 0 && <span className="nav-badge">{pendingCount}</span>}
         </NavLink>
+        <NavLink to="/copilot" className={link}><Bot size={16} /> Copilot</NavLink>
         <NavLink to="/customers" className={link}><Users size={16} /> Customers</NavLink>
         <NavLink to="/orders" className={link}><ShoppingCart size={16} /> Orders</NavLink>
       </nav>
@@ -94,6 +96,12 @@ function LlmStatus() {
   );
 }
 
+/** Floating copilot on every page except the full Copilot page. */
+function FloatingCopilot() {
+  const { pathname } = useLocation();
+  return pathname === '/copilot' ? null : <CopilotLauncher />;
+}
+
 function App() {
   const [query, setQuery] = useState('');
   const setQ = useCallback((q) => setQuery(q), []);
@@ -101,6 +109,7 @@ function App() {
   return (
     <BrowserRouter>
       <SearchContext.Provider value={{ query, setQuery: setQ }}>
+       <CopilotProvider>
         <div className="app-layout">
           <div className="app-panel">
             <TopBar query={query} setQuery={setQ} />
@@ -111,11 +120,14 @@ function App() {
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/customers/:id" element={<CustomerDetail />} />
                 <Route path="/orders" element={<Orders />} />
+                <Route path="/copilot" element={<CopilotPage />} />
               </Routes>
             </main>
           </div>
           <LlmStatus />
+          <FloatingCopilot />
         </div>
+       </CopilotProvider>
       </SearchContext.Provider>
     </BrowserRouter>
   );

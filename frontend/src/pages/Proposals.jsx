@@ -31,6 +31,7 @@ const AGENT_LABELS = {
   follow_up_agent: 'Follow-up agent',
   order_issue_watcher: 'Issue watcher',
   issue_watcher: 'Issue watcher',
+  shop_copilot: 'Shop Copilot',
 };
 
 /**

@@ -572,3 +572,60 @@ button { font-family: inherit; }
   .stats-grid, .customer-stats { grid-template-columns: repeat(2, 1fr); }
   .search-box { display: none; }
 }
+
+/* ── Shop Copilot ──────────────────────────────────────────────────────── */
+.cp { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.cp-page-card { height: calc(100vh - 230px); min-height: 460px; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.cp-log { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.cp-compact .cp-log { padding: 16px; }
+.cp-empty { margin: auto; max-width: 460px; text-align: center; color: var(--text-secondary); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.cp-empty svg { color: var(--accent-primary); }
+.cp-suggest { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
+.cp-suggest .chip { cursor: pointer; border: 1px solid var(--border); background: #fff; padding: 6px 11px; font-size: 13px; }
+.cp-suggest .chip:hover { border-color: var(--accent-primary); color: var(--accent-hover); background: var(--accent-tint); }
+
+.cp-msg { max-width: 82%; padding: 10px 14px; border-radius: var(--radius-lg); line-height: 1.5; font-size: 14px; white-space: pre-wrap; word-wrap: break-word; }
+.cp-user { align-self: flex-end; background: var(--accent-primary); color: #fff; border-bottom-right-radius: 4px; }
+.cp-bot { align-self: flex-start; background: var(--bg-column); border: 1px solid var(--border); border-bottom-left-radius: 4px; color: var(--text-primary); }
+.cp-bot.cp-error { background: var(--danger-bg); border-color: #f5c7c7; }
+.cp-bot-head { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.cp-bot-head svg { color: var(--accent-primary); }
+.cp-note { margin-top: 6px; font-size: 12px; color: var(--warning); }
+.cp-inbox { margin-top: 8px; display: inline-flex; gap: 6px; text-decoration: none; }
+
+.cp-steps { margin-top: 8px; font-size: 12px; }
+.cp-steps-toggle { border: 0; background: none; color: var(--text-secondary); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 0; font-size: 12px; }
+.cp-steps-toggle:hover { color: var(--text-primary); }
+.cp-steps-toggle .chip { margin: 0; padding: 1px 7px; font-size: 11px; }
+.cp-steps ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; white-space: normal; }
+.cp-steps li { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.cp-steps code { font-size: 11px; color: var(--text-secondary); background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; word-break: break-all; }
+.cp-err { color: var(--danger); }
+
+.cp-typing { display: inline-flex; gap: 4px; padding: 14px; }
+.cp-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: cp-blink 1.2s infinite ease-in-out; }
+.cp-typing span:nth-child(2) { animation-delay: 0.2s; }
+.cp-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes cp-blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+
+.cp-input { display: flex; gap: 8px; align-items: center; padding: 12px 14px; border-top: 1px solid var(--border); background: #fff; }
+.cp-input input { flex: 1; border: 1px solid var(--border-strong); border-radius: 999px; padding: 9px 14px; font: inherit; font-size: 14px; outline: none; background: var(--bg-subtle); }
+.cp-input input:focus { border-color: var(--accent-primary); background: #fff; }
+.cp-input .btn { border-radius: 999px; padding: 8px 12px; }
+
+.cp-fab {
+  position: fixed; right: 28px; bottom: 62px; z-index: 45;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 16px; border: 0; border-radius: 999px;
+  background: var(--accent-primary); color: #fff; font: inherit; font-weight: 600; font-size: 14px;
+  box-shadow: var(--shadow-lift); cursor: pointer;
+}
+.cp-fab:hover { background: var(--accent-hover); }
+.cp-panel {
+  position: fixed; right: 20px; bottom: 20px; z-index: 60;
+  width: min(420px, calc(100vw - 40px)); height: min(640px, calc(100vh - 40px));
+  background: #fff; border: 1px solid var(--border); border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lift); display: flex; flex-direction: column; overflow: hidden;
+}
+.cp-panel-head { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.cp-panel-head svg:first-child { color: var(--accent-primary); }
