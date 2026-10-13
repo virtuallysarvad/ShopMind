@@ -125,7 +125,7 @@ Optional overrides:
 `GET /health` reports the active provider and, when it is a real provider, whether that server is reachable:
 
 ```json
-{ "status": "healthy", "app": "ShopMind", "llm_provider": "lmstudio", "lmstudio_reachable": true, "lmstudio_models": ["qwen2.5-7b-instruct"] }
+{ "status": "ok", "app": "ShopMind", "llm_provider": "lmstudio", "lmstudio_reachable": true, "lmstudio_models": ["qwen2.5-7b-instruct"] }
 ```
 
 If the local server is down, slow, or returns malformed output, ShopMind logs a warning and falls back to the deterministic templates — ingestion and the approval flow never break.
