@@ -87,6 +87,8 @@ Optional overrides:
 | `SHOPMIND_OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama |
 | `SHOPMIND_OLLAMA_MODEL` | `qwen2.5:7b` | Ollama |
 | `SHOPMIND_LLM_TIMEOUT_SECONDS` | `30` | both real providers |
+| `SHOPMIND_DEBUG` | `false` | set `true` only to accept unsigned webhooks while testing locally |
+| `VITE_API_BASE` | `http://localhost:8000` | frontend: backend URL (put it in `frontend/.env.local`) |
 
 `GET /health` reports the active provider and, when it is a real provider, whether that server is reachable:
 
