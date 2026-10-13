@@ -11,7 +11,7 @@ from app.database import init_db
 import logging
 import httpx
 
-from app.agents.llm import lmstudio_reachable, ollama_reachable
+from app.agents.llm import groq_reachable, lmstudio_reachable, ollama_reachable, openai_reachable
 from app.routes.webhooks import router as webhook_router
 from app.routes.api import router as api_router
 
@@ -61,6 +61,14 @@ def health_check():
     }
     if settings.llm_provider == "ollama":
         health["ollama_reachable"] = ollama_reachable()
+    if settings.llm_provider == "openai":
+        health["openai_model"] = settings.openai_model
+        health["openai_key_set"] = bool(settings.openai_api_key)
+        health["openai_reachable"] = openai_reachable()
+    if settings.llm_provider == "groq":
+        health["groq_model"] = settings.groq_model
+        health["groq_key_set"] = bool(settings.groq_api_key)
+        health["groq_reachable"] = groq_reachable()
     if settings.llm_provider == "lmstudio":
         try:
             health["lmstudio_reachable"] = lmstudio_reachable()
