@@ -2,59 +2,91 @@
 
 An intelligent CRM layer for WooCommerce that automatically segments customers, detects order issues, drafts personalized follow-ups, and provides human-in-the-loop approval for all AI-driven actions.
 
+## Demo videos
+
+- **Plan video (2 min):** _add link here_
+- **Result video (2 min):** _add link here_
+
+## What it does (Kilowott brief: CRM System Integration with WooCommerce)
+
+| Brief | ShopMind |
+|---|---|
+| Customer data management | Customers are built from orders and matched by email or phone. Auto-segments (New / Regular / VIP / At Risk), lifetime spend in ₹, a full timeline per customer |
+| Order tracking | REST sync + signed real-time webhooks, an Orders board by status, and failed-payment and repeat-refund detection |
+| Communication workflows | AI-drafted follow-up emails, hand-written emails, or emails asked for in Copilot chat. Approve one and it goes out through WooCommerce's own mailer |
+| Agentic AI | The Shop Copilot runs a tool-calling loop over 8 CRM tools. Its writes only become pending proposals |
+| Human in the loop | Every agent output lands in the Approval Inbox. Approve and it executes and writes back to WooCommerce |
+
+Scope, assumptions, design patterns, testing strategy and operations: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+How AI tools were used to build it, prompt by prompt: **[AI_USAGE.md](AI_USAGE.md)**.
+
 ## Architecture
 
 ```
-┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐
-│  WooCommerce    │────▶│  Webhook API │────▶│  Order Service  │
-│  (MockClient)   │     │  (FastAPI)   │     │  (SQLite)       │
-└─────────────────┘     └──────────────┘     └─────────────────┘
-                                                      │
-                              ┌────────────────────────┤
-                              ▼                        ▼
-                     ┌────────────────┐     ┌──────────────────┐
-                     │ Customer       │     │ Timeline Service │
-                     │ Resolution     │     │ (Events)         │
-                     └────────────────┘     └──────────────────┘
-                              │
-                    ┌─────────┼─────────┐
-                    ▼         ▼         ▼
-             ┌──────────┐ ┌────────┐ ┌──────────────┐
-             │ Segment  │ │Follow- │ │ Order-Issue   │
-             │ Agent    │ │up Agent│ │ Watcher       │
-             └──────────┘ └────────┘ └──────────────┘
-                    │         │         │
-                    ▼         ▼         ▼
-             ┌──────────────────────────────────┐
-             │       Approval Inbox             │
-             │   (Human-in-the-loop review)     │
-             └──────────────────────────────────┘
+ WooCommerce ──REST sync──▶ ┌──────────── ShopMind API (FastAPI) ────────────┐
+   store     ──webhooks───▶ │ ingest ─▶ Segment agent ─┐                     │
+      ▲                     │        ─▶ Follow-up agent├─▶ Approval Inbox ─┐ │
+      │                     │        ─▶ Issue watcher ─┘   (pending)       │ │
+      │                     │ Shop Copilot (LLM tool loop) ─▶ pending ─────┤ │
+      │                     │ Human "+ New proposal"       ─▶ pending ─────┤ │
+      │                     │                    approve ─▶ execute ◀──────┘ │
+      └── order notes, customer meta (write-back) ◀─────────┘ + timeline     │
+                            └────────────────────────────────────────────────┘
+                                        ▲  React dashboard (boards, inbox, copilot)
+ LLM strategy: FakeLLM (offline) · Groq (free) · LM Studio / Ollama (local) · OpenAI
 ```
 
 ## Tech Stack
-- **Backend**: Python 3.11+, FastAPI, SQLite (via SQLAlchemy), Pydantic
-- **Frontend**: React (Vite), vanilla CSS
-- **AI**: Deterministic rules + LLM for the human-readable text (local Ollama model, `FakeLLM` as fallback)
-- **Testing**: pytest
+- **Backend**: Python 3.12, FastAPI, SQLAlchemy + SQLite, Pydantic, httpx
+- **Frontend**: React 19 + Vite, React Router, vanilla CSS
+- **AI in the product**: deterministic rules decide, and an LLM writes the text and drives the Copilot. Providers are Groq (free, `openai/gpt-oss-120b`), LM Studio, Ollama and OpenAI, with an offline `FakeLLM` fallback
+- **Integration**: WooCommerce REST API v3 (OAuth 1.0a over HTTP, Basic over HTTPS) + HMAC-signed webhooks
+- **Testing**: pytest (unit, integration, end-to-end), Vitest + Testing Library, GitHub Actions CI
+- **Deploy**: Docker Compose (API + nginx-served dashboard)
 
 ## Quick Start
+
+### One command (Docker)
+
+```bash
+docker compose up --build
+# Dashboard: http://localhost:3000   API docs: http://localhost:8000/docs
+```
+
+The first start seeds demo data and uses the offline LLM, so no keys are needed. For a real free LLM, put `SHOPMIND_LLM_PROVIDER=groq` and `SHOPMIND_GROQ_API_KEY=...` in `backend/.env` and run it again.
+
+### Dev mode
 
 ```bash
 # Backend
 cd backend
 python -m venv venv
-venv\Scripts\activate  # Windows
+venv\Scripts\activate          # Windows (source venv/bin/activate on macOS/Linux)
 pip install -r requirements.txt
-python -m pytest tests/ -v
+python -m app.seed              # demo data (mock mode)
 uvicorn app.main:app --reload --port 8000
 
-# Frontend
+# Frontend (new terminal)
 cd frontend
 npm install
-npm run dev
+npm run dev                     # http://localhost:5173
 ```
 
-## Running with a real LLM (default: local LM Studio)
+## Testing
+
+```bash
+cd backend
+pytest tests      # 149 unit + integration tests
+pytest e2e        # 18 end-to-end tests: real API + fake WooCommerce store over HTTP
+
+cd frontend
+npm test          # 12 Vitest + Testing Library tests
+```
+
+The end-to-end suite starts two real servers (ShopMind in live WooCommerce mode, plus `e2e/fake_store.py`). It then walks the whole loop: connect (OAuth1-signed), sync 25 orders, re-sync without duplicates, reject unsigned webhooks, raise a failed payment as an issue, approve → private order note in the store, hand-written email → customer note, segment change → `shopmind_segment` customer meta, reject → nothing written, and Copilot → pending only.
+CI (`.github/workflows/ci.yml`) runs all of it, plus the production build and the Docker build, on every push.
+
+## Local LLMs (LM Studio / Ollama)
 
 By default ShopMind runs with `FakeLLM` — deterministic templates, no network, so tests and demos stay reproducible. To use a real local model, load a model into **LM Studio** (recommended), start its local API server, and tell ShopMind to use it:
 
@@ -93,7 +125,7 @@ Optional overrides:
 `GET /health` reports the active provider and, when it is a real provider, whether that server is reachable:
 
 ```json
-{ "status": "healthy", "app": "ShopMind", "llm_provider": "lmstudio", "lmstudio_reachable": true, "lmstudio_models": ["qwen2.5-7b-instruct"] }
+{ "status": "ok", "app": "ShopMind", "llm_provider": "lmstudio", "lmstudio_reachable": true, "lmstudio_models": ["qwen2.5-7b-instruct"] }
 ```
 
 If the local server is down, slow, or returns malformed output, ShopMind logs a warning and falls back to the deterministic templates — ingestion and the approval flow never break.

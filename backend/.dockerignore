@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+shopmind.db*
+.pytest_cache/
+tests/
+e2e/

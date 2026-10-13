@@ -1,5 +1,26 @@
 # AI Usage Log — ShopMind Hackathon
 
+## At a glance
+
+| Phase | AI tool | What the AI did | What the human did |
+|---|---|---|---|
+| 1. Plan + scaffold | Claude Opus 4.6 in Antigravity IDE | Turned the brief into a plan, then built the FastAPI + React scaffold, the rule agents and 33 tests | Set the hackathon rules: vertical slice first, deterministic agents, tests alongside code |
+| 2. Completion pass | Buffy (Freebuff) | Found and fixed the defects that kept the frontend from running, and added an integration test | Reviewed the honest-status notes |
+| 3–4. Real LLM | Buffy | Added the Ollama and LM Studio providers behind one interface, with a fallback | Picked free, local-only models |
+| 5. Code review | Hark | Reviewed the repo and fixed the deprecated startup hook, the debug webhook bypass and the hardcoded API URL | Approved each PR |
+| 6. UI | Hark | Rebuilt the UI as a pipeline board from a reference screenshot | Supplied the reference image |
+| 7. Agentic Copilot | Hark | Built a tool-calling chat agent whose writes can only become pending proposals | Chose the "human approves everything" rule |
+| 8. WooCommerce live | Hark | Built a REST client (OAuth1/Basic), sync, write-back, a webhook signature fix and a Docker store | Ran the Docker store on a Windows laptop |
+| 9. Hosted LLMs | Hark | Added OpenAI and Groq providers, a 429 retry, and fixed the Copilot→Inbox live refresh | Picked Groq (free) and confirmed it works live |
+| 10. Ship quality | Hark | Added manual proposals, a wp-admin segment badge, an e2e suite against a fake store, Vitest tests, CI, Docker Compose and architecture docs | Set the goal ("we need to win"), applied the PRs and recorded the videos |
+
+**How AI was used well, not just a lot:**
+- Every AI change landed as a reviewed PR with tests. The human approved each merge.
+- Rules decide and the LLM only writes. That keeps outcomes testable and stops the model from making up prices or discounts.
+- Each proposal records whether an LLM wrote it and which model, so fallback text is never passed off as AI.
+- Wrong turns are logged below ("Things I got wrong", "Rejected approaches"), not hidden.
+
+
 ## Project Overview
 ShopMind: AI-powered CRM layer for WooCommerce that ingests orders, segments customers, detects order issues, drafts follow-up communications, and provides a human-in-the-loop approval workflow.
 
@@ -358,3 +379,17 @@ Prompt: "Can you please integrate ChatGPT API maybe? Instead of those hardcoded 
 - 7 new tests (`tests/test_openai.py`), 133 total. A live API call was not run from the sandbox (no key).
 - Follow-up prompt: "A friend says the API key is free on groq.com, can you integrate that?" Added `GroqLLM` (provider `groq`, default `openai/gpt-oss-120b`). It also drives Copilot, `/health` reports `groq_reachable`, and the pill reads `Groq · model`. 3 more tests, 136 total.
 - Follow-up: "the chatbot shows proposal #33 but I don't see it in the approval tab". Fixed the wiring: every useApi view now refetches quietly on `shopmind:changed` and every 15 s, the Copilot button deep-links to `/proposals?open=<id>` and opens its drawer, Copilot proposals written by the model are flagged LLM with `llm_model`, and hosted APIs retry on 429 using `retry-after`. 138 tests.
+
+# Phase 10 — Ship quality: e2e, CI, Docker, docs (Hark)
+
+Prompts: "Why there's no option to add the deal myself?" / "Is there a way I can show that in the demo?" / "See if it follows all this [the 3 Kilowott slides]. If not get to work. We somehow need to win this hackathon."
+- **Manual proposals:** `POST /api/proposals` plus a **+ New proposal** drawer. They go through the same approve → execute → write-back path and are tagged "You". 11 tests.
+- **wp-admin visibility:** the mu-plugin `shopmind-segment.php` shows the written-back segment as a badge on Users, the profile page and the order screen.
+- **Gap analysis against the scoring slide:** the slide asks for "unit tests and end-to-end tests". There were no true e2e tests, no CI and no one-command deploy, and the docs didn't cover the design patterns.
+- **End-to-end suite** (`backend/e2e/`): starts the real API and a fake WooCommerce REST store as separate uvicorn processes and drives 18 steps over HTTP.
+- **Frontend tests:** Vitest + Testing Library (12).
+- **CI:** GitHub Actions runs backend tests, e2e, frontend tests, the build and the Docker build.
+- **Deploy:** `docker compose up --build` brings up the API (seeded on first run) and the nginx dashboard.
+- **Docs:** `docs/ARCHITECTURE.md` (scope vs brief, assumptions, mermaid diagram, design patterns, testing, operations). The README is restructured, with a Videos section for the submission.
+- **Things I got wrong and fixed:** the first e2e runs hit the sandbox's HTTP proxy, so the test clients now use `trust_env=False`. I assumed a re-sync reports orders as "skipped", but it reports them as "updated" with zero agent runs, so the test now asserts what matters: no new proposals.
+- **Verification:** 149 + 18 backend and 12 frontend tests pass, and the production build passes. Docker images were not built in the sandbox (no Docker), so CI covers that.
