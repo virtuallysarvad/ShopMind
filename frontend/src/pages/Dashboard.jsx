@@ -2,7 +2,7 @@ import { api } from '../api';
 import { useApi, formatCurrency, getSegmentInfo } from '../utils';
 import { Link } from 'react-router-dom';
 import { 
-  Users, ShoppingCart, DollarSign, AlertCircle, 
+  Users, ShoppingCart, IndianRupee, AlertCircle, 
   TrendingUp, ArrowRight 
 } from 'lucide-react';
 
@@ -35,7 +35,7 @@ export default function Dashboard() {
           label="Total Orders"
         />
         <StatCard
-          icon={<DollarSign size={22} />}
+          icon={<IndianRupee size={22} />}
           iconClass="green"
           value={formatCurrency(stats.total_revenue)}
           label="Total Revenue"

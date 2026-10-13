@@ -308,3 +308,23 @@ None. The frontend now requests `limit=200` (the API's max) and joins customers 
 - `npm run build` → succeeds.
 - Backend seeded and served; `/api/proposals`, `/api/customers`, `/api/orders` return the fields the boards use (agent names `segment_agent`, `follow_up_agent`, `order_issue_watcher`).
 - Not done: a headless-browser screenshot (no Chromium in the sandbox). Check the boards visually in a real browser.
+
+
+# Phase 7 — Shop Copilot agent (Hark)
+
+### Human prompt (verbatim intent)
+"Can we please somehow integrate an AI agent into this? Kinda like Dench but for shops?"
+
+### What was built
+- Tool-calling chat agent (`backend/app/agents/copilot.py`) over 8 CRM tools (`copilot_tools.py`): 5 read, 3 write. Write tools only create pending proposals; no approve/execute tool exists (tested).
+- LLM brain: LM Studio or Ollama through the OpenAI-compatible `/v1/chat/completions` with `tools`, max 6 steps. Rules brain: keyword router used for `fake` and as automatic fallback when the model is down (reply flagged `mode="rules"` with a note).
+- `POST /api/copilot/chat`; frontend Copilot page plus floating chat panel with suggestions, model label, expandable tool-call trace, and a link to the Approval Inbox when a proposal was created.
+- Also swapped the dollar icon on Dashboard/Customer pages for a rupee icon.
+
+### Verification
+- 20 new tests (`tests/test_copilot.py`): tools, ₹ formatting, dedup, scripted tool-calling model, step limit, model-down fallback, rules intents, endpoint. Full suite: 104 passed.
+- Ran the rules copilot against the seeded DB (8 sample questions) and got correct ₹ answers and proposals.
+- `npm run build` passes.
+
+### Not yet verified
+- A live LM Studio tool-calling run (needs the laptop). Qwen2.5 7B Instruct supports tools in LM Studio; log the result here once tried.

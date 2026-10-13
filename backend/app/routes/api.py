@@ -163,3 +163,33 @@ def _execute_approved_proposal(db: Session, proposal: Proposal) -> None:
 
     # For send_email and investigate_issue: mark as executed (simulated)
     execute_proposal(db, proposal.id)
+
+
+# ── Shop Copilot (chat agent) ─────────────────────────────────────────────
+
+from pydantic import BaseModel, Field  # noqa: E402
+
+from app.agents import copilot  # noqa: E402
+
+
+class CopilotMessage(BaseModel):
+    role: str = Field(..., pattern="^(user|assistant)$")
+    content: str = Field(..., max_length=4000)
+
+
+class CopilotChatRequest(BaseModel):
+    messages: list[CopilotMessage] = Field(..., min_length=1, max_length=40)
+
+
+@router.post("/copilot/chat")
+def copilot_chat(body: CopilotChatRequest, db: Session = Depends(get_db)):
+    """Chat with the Shop Copilot.
+
+    It reads the CRM through tools; anything that would change data becomes a
+    pending proposal in the Approval Inbox instead.
+    """
+    try:
+        out = copilot.chat(db, [m.model_dump() for m in body.messages])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return out.to_dict()

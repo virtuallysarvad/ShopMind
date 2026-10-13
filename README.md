@@ -111,5 +111,18 @@ If the local server is down, slow, or returns malformed output, ShopMind logs a 
 - **Segment Agent**: Classify customers (VIP, At-Risk, New, Regular) using deterministic rules
 - **Follow-up Agent**: Draft personalized communications based on order events
 - **Order-Issue Watcher**: Detect failed payments, delayed shipping, repeated returns
+- **Shop Copilot**: Chat agent (like an AI CRM operator) that answers questions about the shop and acts through tools; every write becomes a pending proposal
 - **Approval Inbox**: All AI proposals require human approval before execution
 - **Timeline**: Every action is recorded as an auditable event
+
+## Shop Copilot (agentic chat)
+
+Open **Copilot** in the top bar, or the floating **Ask Copilot** button on any page.
+
+- **How it works**: with `SHOPMIND_LLM_PROVIDER=lmstudio` (or `ollama`), the local model runs a function-calling loop over 8 tools via the OpenAI-compatible `/v1/chat/completions` API (max 6 steps). With `fake`, or when the model is unreachable, a keyword router answers with the same tools and the reply is labelled "Built-in rules".
+- **Read tools**: `shop_stats`, `search_customers`, `get_customer`, `list_orders`, `list_pending_proposals`.
+- **Write tools**: `propose_segment_change`, `draft_follow_up_email`, `flag_order_issue`. These only create **pending proposals** (agent `shop_copilot`) in the Approval Inbox. No tool can approve, reject or execute, so the human stays in charge.
+- **Transparency**: each reply shows which model answered and the tool calls it made.
+- **API**: `POST /api/copilot/chat` with `{"messages": [{"role": "user", "content": "Who are my top customers?"}]}`.
+- **Try**: "How is my shop doing?", "Show failed orders", "Draft a thank-you email to Alice", "Make David VIP".
+- Code: `backend/app/agents/copilot.py`, `copilot_tools.py`, `frontend/src/components/Copilot.jsx`; tests in `backend/tests/test_copilot.py`.

@@ -60,6 +60,10 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  // Shop Copilot (chat agent)
+  copilotChat: (messages) =>
+    request('/api/copilot/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
+
   // Health
   health: () => request('/health'),
 };
