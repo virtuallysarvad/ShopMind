@@ -44,13 +44,15 @@ export function formatDate(dateStr) {
 }
 
 /**
- * Format currency.
+ * Format currency. ShopMind is built for an Indian store, so every amount
+ * renders in rupees with Indian digit grouping (₹1,23,456.00), whatever
+ * currency code an older order row carries.
  */
-export function formatCurrency(amount, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', {
+export function formatCurrency(amount) {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency,
-  }).format(amount);
+    currency: 'INR',
+  }).format(amount || 0);
 }
 
 /**
@@ -98,10 +100,10 @@ export function daysSince(dateStr) {
   return Math.max(0, Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000));
 }
 
-/** Compact currency for KPI tiles: $215,400 (no cents). */
-export function formatMoney(amount, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency', currency, maximumFractionDigits: 0,
+/** Compact currency for KPI tiles: ₹2,15,400 (no paise). */
+export function formatMoney(amount) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency', currency: 'INR', maximumFractionDigits: 0,
   }).format(amount || 0);
 }
 

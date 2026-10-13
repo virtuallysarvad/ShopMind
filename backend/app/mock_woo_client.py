@@ -23,14 +23,14 @@ SAMPLE_CUSTOMERS = [
 ]
 
 SAMPLE_PRODUCTS = [
-    {"id": 101, "name": "Wireless Bluetooth Headphones", "price": "79.99"},
-    {"id": 102, "name": "Organic Green Tea (50 bags)", "price": "24.99"},
-    {"id": 103, "name": "Laptop Stand - Aluminum", "price": "49.99"},
-    {"id": 104, "name": "Running Shoes - Pro Series", "price": "129.99"},
-    {"id": 105, "name": "Ceramic Coffee Mug Set (4)", "price": "34.99"},
-    {"id": 106, "name": "USB-C Hub 7-in-1", "price": "39.99"},
-    {"id": 107, "name": "Yoga Mat - Premium", "price": "59.99"},
-    {"id": 108, "name": "Stainless Steel Water Bottle", "price": "19.99"},
+    {"id": 101, "name": "Wireless Bluetooth Headphones", "price": "2499.00"},
+    {"id": 102, "name": "Organic Green Tea (50 bags)", "price": "399.00"},
+    {"id": 103, "name": "Laptop Stand - Aluminum", "price": "1299.00"},
+    {"id": 104, "name": "Running Shoes - Pro Series", "price": "3999.00"},
+    {"id": 105, "name": "Ceramic Coffee Mug Set (4)", "price": "899.00"},
+    {"id": 106, "name": "USB-C Hub 7-in-1", "price": "1499.00"},
+    {"id": 107, "name": "Yoga Mat - Premium", "price": "1199.00"},
+    {"id": 108, "name": "Stainless Steel Water Bottle", "price": "599.00"},
 ]
 
 
@@ -76,7 +76,7 @@ class MockWooClient:
             id=self._order_counter,
             status=status,
             total=f"{total:.2f}",
-            currency="USD",
+            currency="INR",
             payment_method="stripe",
             billing=WooBilling(**cust),
             shipping=WooShipping(first_name=cust["first_name"], last_name=cust["last_name"]),

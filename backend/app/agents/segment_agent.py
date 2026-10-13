@@ -2,7 +2,7 @@
 
 Rules:
   - NEW:      order_count <= 1
-  - VIP:      order_count >= 5  AND  total_spent >= 500
+  - VIP:      order_count >= 5  AND  total_spent >= 15000  (rupees)
   - AT_RISK:  order_count >= 2  AND  last_order > 60 days ago
   - REGULAR:  everything else
 
@@ -21,12 +21,16 @@ from app.agents.llm import LLMClient, get_llm
 
 # ── Deterministic Classification Rules ────────────────────────────────────
 
+VIP_MIN_ORDERS = 5
+VIP_MIN_SPEND_INR = 15000
+
+
 def classify_customer(customer: Customer) -> CustomerSegment:
     """Pure-function classification.  No side effects, fully testable."""
     now = datetime.now(timezone.utc)
 
     # VIP: high value
-    if customer.order_count >= 5 and customer.total_spent >= 500:
+    if customer.order_count >= VIP_MIN_ORDERS and customer.total_spent >= VIP_MIN_SPEND_INR:
         return CustomerSegment.VIP
 
     # AT_RISK: had orders but gone quiet

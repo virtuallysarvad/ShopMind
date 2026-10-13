@@ -88,6 +88,12 @@ ISSUE_SYSTEM_PROMPT = (
     "or markdown."
 )
 
+# ShopMind targets an Indian store: every amount in the context is rupees.
+_CURRENCY_NOTE = " All money amounts are in Indian rupees; write them with the ₹ symbol."
+SEGMENT_SYSTEM_PROMPT += _CURRENCY_NOTE
+DRAFT_SYSTEM_PROMPT += _CURRENCY_NOTE
+ISSUE_SYSTEM_PROMPT += _CURRENCY_NOTE
+
 
 # ── FakeLLM: deterministic templates ──────────────────────────────────────
 
@@ -106,8 +112,8 @@ class FakeLLM:
         explanations = {
             "vip": (
                 f"[Deterministic] {name} qualifies as VIP based on "
-                f"{order_count} orders totaling ${total_spent:.2f}. "
-                f"This exceeds the VIP thresholds of 5+ orders and $500+ total spend."
+                f"{order_count} orders totaling ₹{total_spent:,.2f}. "
+                f"This exceeds the VIP thresholds of 5+ orders and ₹15,000+ total spend."
             ),
             "at_risk": (
                 f"[Deterministic] {name} is classified as At-Risk. "
@@ -116,7 +122,7 @@ class FakeLLM:
             ),
             "regular": (
                 f"[Deterministic] {name} is a Regular customer with "
-                f"{order_count} orders and ${total_spent:.2f} total spend. "
+                f"{order_count} orders and ₹{total_spent:,.2f} total spend. "
                 f"They show consistent but moderate engagement."
             ),
             "new": (

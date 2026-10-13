@@ -91,7 +91,7 @@ class TestOrderIngestion:
             id=order_id,
             status=status,
             total=total,
-            currency="USD",
+            currency="INR",
             payment_method="stripe",
             billing=WooBilling(
                 first_name="Test", last_name="Buyer",

@@ -310,7 +310,7 @@ def _order(order_id: int, email: str, total: str = "120.00") -> dict:
         "id": order_id,
         "status": "processing",
         "total": total,
-        "currency": "USD",
+        "currency": "INR",
         "payment_method": "stripe",
         "billing": {
             "first_name": "Test",

@@ -80,7 +80,7 @@ def vip_customer(db):
         first_name="VIP",
         last_name="Customer",
         segment=CustomerSegment.REGULAR,
-        total_spent=1500.0,
+        total_spent=25000.0,
         order_count=10,
     )
     db.add(customer)
