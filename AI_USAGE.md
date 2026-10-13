@@ -357,3 +357,4 @@ Prompt: "Can you please integrate ChatGPT API maybe? Instead of those hardcoded 
 - `/health` reports the OpenAI model and key status, and the frontend pill shows `ChatGPT · model`.
 - 7 new tests (`tests/test_openai.py`), 133 total. A live API call was not run from the sandbox (no key).
 - Follow-up prompt: "A friend says the API key is free on groq.com, can you integrate that?" Added `GroqLLM` (provider `groq`, default `openai/gpt-oss-120b`). It also drives Copilot, `/health` reports `groq_reachable`, and the pill reads `Groq · model`. 3 more tests, 136 total.
+- Follow-up: "the chatbot shows proposal #33 but I don't see it in the approval tab". Fixed the wiring: every useApi view now refetches quietly on `shopmind:changed` and every 15 s, the Copilot button deep-links to `/proposals?open=<id>` and opens its drawer, Copilot proposals written by the model are flagged LLM with `llm_model`, and hosted APIs retry on 429 using `retry-after`. 138 tests.

@@ -1,5 +1,5 @@
-import { useMemo, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, XCircle, ArrowUpDown, Bot, ExternalLink } from 'lucide-react';
 import { api } from '../api';
 import {
@@ -70,6 +70,23 @@ export default function Proposals() {
 
   const { data: proposals, loading, error, refetch } = useApi(() => api.getProposals());
   const { data: customers } = useApi(() => api.getCustomers());
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Deep link from Copilot: /proposals?open=33 opens that proposal's drawer.
+  const openId = Number(searchParams.get('open')) || null;
+  const retried = useRef(false);
+  useEffect(() => {
+    if (!openId) return;
+    const match = proposals?.find((x) => x.id === openId);
+    if (match) {
+      setStatusFilter(match.status === 'pending' ? 'pending' : '');
+      setSelected(match);
+      setSearchParams({}, { replace: true });
+    } else if (proposals && !retried.current) {
+      retried.current = true;
+      refetch(); // created a moment ago: fetch once more
+    }
+  }, [openId, proposals]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const customerById = useMemo(
     () => Object.fromEntries((customers || []).map((c) => [c.id, c])),

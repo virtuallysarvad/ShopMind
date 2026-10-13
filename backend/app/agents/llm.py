@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -339,6 +340,7 @@ class LMStudioLLM:
 
     label = "LM Studio"
     api_key: str = ""
+    max_retries = 0  # hosted APIs set this to ride out 429 rate limits
     send_temperature = True
 
     def _headers(self) -> dict:
@@ -370,10 +372,17 @@ class LMStudioLLM:
                 },
             }
 
-        response = httpx.post(
-            f"{self.base_url}/chat/completions", json=payload,
-            timeout=self.timeout, **({"headers": self._headers()} if self.api_key else {}),
-        )
+        for attempt in range(self.max_retries + 1):
+            response = httpx.post(
+                f"{self.base_url}/chat/completions", json=payload,
+                timeout=self.timeout, **({"headers": self._headers()} if self.api_key else {}),
+            )
+            if response.status_code != 429 or attempt == self.max_retries:
+                break
+            # Hosted free tiers (Groq) rate-limit per minute: wait as told, then retry.
+            wait = min(float(response.headers.get("retry-after") or 2), 20.0)
+            logger.info("%s rate-limited, retrying in %.1fs", self.label, wait)
+            time.sleep(wait)
         response.raise_for_status()
 
         completion = response.json()
@@ -454,6 +463,7 @@ class OpenAILLM(LMStudioLLM):
 
     label = "OpenAI"
     send_temperature = False
+    max_retries = 3
 
     def __init__(self, api_key: str | None = None, model: str | None = None,
                  base_url: str | None = None, timeout: int | None = None):
