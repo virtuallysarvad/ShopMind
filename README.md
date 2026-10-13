@@ -112,6 +112,7 @@ If the local server is down, slow, or returns malformed output, ShopMind logs a 
 - **Follow-up Agent**: Draft personalized communications based on order events
 - **Order-Issue Watcher**: Detect failed payments, delayed shipping, repeated returns
 - **Shop Copilot**: Chat agent (like an AI CRM operator) that answers questions about the shop and acts through tools; every write becomes a pending proposal
+- **WooCommerce integration (two-way)**: REST API sync + verified webhooks in, approved actions written back out (see below)
 - **Approval Inbox**: All AI proposals require human approval before execution
 - **Timeline**: Every action is recorded as an auditable event
 
@@ -126,3 +127,29 @@ Open **Copilot** in the top bar, or the floating **Ask Copilot** button on any p
 - **API**: `POST /api/copilot/chat` with `{"messages": [{"role": "user", "content": "Who are my top customers?"}]}`.
 - **Try**: "How is my shop doing?", "Show failed orders", "Draft a thank-you email to Alice", "Make David VIP".
 - Code: `backend/app/agents/copilot.py`, `copilot_tools.py`, `frontend/src/components/Copilot.jsx`; tests in `backend/tests/test_copilot.py`.
+
+## WooCommerce integration (live store)
+
+ShopMind runs on demo data by default (`SHOPMIND_WOO_MODE=mock`). Set it to `live` to connect a real store.
+
+| Direction | How | What |
+|---|---|---|
+| Store → ShopMind (backfill) | REST API `GET /wp-json/wc/v3/orders`, paginated via `X-WP-TotalPages` | **Sync now** on the dashboard or `POST /api/woocommerce/sync` (optional `modified_after`). Idempotent; agents only re-run when an order is new or its status changed. |
+| Store → ShopMind (real time) | Webhooks `order.created` / `order.updated` → `POST /webhooks/woocommerce/order` | Signature checked as WooCommerce sends it: base64 HMAC-SHA256 in `X-WC-Webhook-Signature`. The `webhook_id=` ping is acknowledged; `order.deleted` is ignored. |
+| ShopMind → Store | Runs when you **approve** a proposal | Segment change → customer meta `shopmind_segment`. Email → customer order note (WooCommerce emails it to the customer). Order issue → private order note. Failures are logged on the timeline and never block the approval. |
+
+Auth follows the WooCommerce docs: Basic auth over HTTPS, OAuth 1.0a (HMAC-SHA256) over plain HTTP (local stores). `GET /api/woocommerce/status` checks the credentials.
+
+### Local demo store (Docker, free)
+
+```powershell
+# 1. Start the ShopMind backend first (port 8000), so WooCommerce's webhook ping succeeds
+# 2. Start WordPress + WooCommerce
+docker compose -f docker-compose.woocommerce.yml up -d
+# 3. Install WooCommerce, INR settings, products, 3 customers + a guest, 12 orders, webhooks, API key
+docker compose -f docker-compose.woocommerce.yml run --rm wpcli bash /scripts/setup.sh
+```
+
+The script prints five `SHOPMIND_...` lines (also saved to `woocommerce/scripts/shopmind-woo.env`). Put them in `backend/.env`, restart the backend, open the dashboard and press **Sync now**. Store at http://localhost:8080, admin at `/wp-admin` (admin / admin). New orders and status changes in wp-admin then arrive through webhooks.
+
+Code: `backend/app/woo_client.py`, `backend/app/services/woo_sync.py`, `backend/app/routes/webhooks.py`; tests in `backend/tests/test_woocommerce.py` (a fake store that checks OAuth signatures the way WooCommerce's PHP does).

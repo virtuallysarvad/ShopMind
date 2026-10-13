@@ -328,3 +328,22 @@ None. The frontend now requests `limit=200` (the API's max) and joins customers 
 
 ### Not yet verified
 - A live LM Studio tool-calling run (needs the laptop). Qwen2.5 7B Instruct supports tools in LM Studio; log the result here once tried.
+
+
+# Phase 8 — Real WooCommerce integration (Hark)
+
+### Human prompt (verbatim intent)
+"Can you please do the WooCommerce integration part?" (with the Kilowott challenge slides: CRM integration with WooCommerce covering customer data, order tracking, communication workflows).
+
+### What was built
+- `woo_client.py`: WooCommerce REST v3 client. Basic auth on HTTPS, OAuth 1.0a HMAC-SHA256 on HTTP (as the WooCommerce docs require), pagination via `X-WP-TotalPages`, errors wrapped in `WooCommerceError`.
+- `services/woo_sync.py`: order backfill and incremental sync through the existing ingest + agent pipeline. Write-back on approval: segment to customer meta, email to a customer order note (WooCommerce emails it), issue to a private order note.
+- Webhook fixes found while reading the docs: WooCommerce signs with base64, not hex (hex is still accepted), ping handling, ignoring the deleted topic, and agents re-running only on new orders or status changes.
+- `GET /api/woocommerce/status`, `POST /api/woocommerce/sync`, and a dashboard connection card with **Sync now**.
+- `docker-compose.woocommerce.yml` + `woocommerce/scripts/setup.sh`: a one-command local WordPress + WooCommerce store in INR, with demo customers and orders, webhooks, and an API key. Includes an mu-plugin so webhooks can reach the host.
+
+### Verification
+- 22 new tests (`tests/test_woocommerce.py`) against a fake store that verifies OAuth signatures with a port of WooCommerce's PHP check. Full suite: 126 passed. `npm run build` passes.
+
+### Not yet verified
+- The Docker store and setup script were not run (no Docker in the build sandbox). The first run on the laptop is the real end-to-end test; log it here.

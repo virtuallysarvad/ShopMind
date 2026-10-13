@@ -1,13 +1,14 @@
 import { api } from '../api';
 import { useApi, formatCurrency, getSegmentInfo } from '../utils';
 import { Link } from 'react-router-dom';
+import WooConnection from '../components/WooConnection';
 import { 
   Users, ShoppingCart, IndianRupee, AlertCircle, 
   TrendingUp, ArrowRight 
 } from 'lucide-react';
 
 export default function Dashboard() {
-  const { data, loading, error } = useApi(() => api.getDashboard());
+  const { data, loading, error, refetch } = useApi(() => api.getDashboard());
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -20,6 +21,8 @@ export default function Dashboard() {
         <h2>Dashboard</h2>
         <p>Overview of your store's AI-powered CRM</p>
       </div>
+
+      <WooConnection onSynced={refetch} />
 
       <div className="stats-grid">
         <StatCard

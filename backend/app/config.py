@@ -7,11 +7,17 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite:///./shopmind.db"
 
-    # WooCommerce (mock by default)
+    # WooCommerce
+    # "mock" -> demo data from MockWooClient / `python -m app.seed` (default, offline)
+    # "live" -> real store over the REST API (wc/v3): sync + write-back
+    woo_mode: str = "mock"
     woo_store_url: str = "https://mock-store.example.com"
     woo_consumer_key: str = "ck_mock_key"
     woo_consumer_secret: str = "cs_mock_secret"
     woo_webhook_secret: str = "whsec_mock_webhook_secret"
+    woo_writeback: bool = True          # mirror approved proposals into the store (live mode)
+    woo_verify_ssl: bool = True
+    woo_timeout_seconds: int = 20
 
     # LLM
     # "fake"     -> deterministic templates (default, keeps tests offline)
